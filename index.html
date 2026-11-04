@@ -1,0 +1,1641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Boon: swipe right to pay a real bill for someone, straight to the biller. A product prototype.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<title>Boon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one phone-width column. App bar with a three-way switch: the patron's swipe deck of profile cards, the bill owner's uploads, or the compliance queue. */
+:root{
+  --bg:#F6F3FA; --card:#FFFFFF; --soft:#F1ECF8; --ink:#1A1326; --muted:#665E75; --line:#E3DCEC;
+  --royal:#6D28D9; --royal-soft:#EDE5FB; --gold:#9A6400; --gold-soft:#FBF0D9;
+  --yes:#0B7F56; --yes-soft:#DDF3EA; --no:#C62E45; --no-soft:#FBE3E7;
+  --btn:linear-gradient(135deg,#5B21B6,#A21CAF);
+  --scrim:rgba(18,10,30,.6); --shadow:0 24px 48px -24px rgba(40,20,70,.45);
+  --display:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body:"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E0A15; --card:#1A1424; --soft:#241C31; --ink:#F2EDF9; --muted:#A79FB8; --line:#30273F;
+  --royal:#C4A8FF; --royal-soft:#2C2145; --gold:#F6C453; --gold-soft:#3A2E12;
+  --yes:#3DD598; --yes-soft:#123528; --no:#FF7A8C; --no-soft:#3D1620;
+  --scrim:rgba(0,0,0,.7); --shadow:0 24px 48px -24px rgba(0,0,0,.85);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0E0A15; --card:#1A1424; --soft:#241C31; --ink:#F2EDF9; --muted:#A79FB8; --line:#30273F;
+  --royal:#C4A8FF; --royal-soft:#2C2145; --gold:#F6C453; --gold-soft:#3A2E12;
+  --yes:#3DD598; --yes-soft:#123528; --no:#FF7A8C; --no-soft:#3D1620;
+  --scrim:rgba(0,0,0,.7); --shadow:0 24px 48px -24px rgba(0,0,0,.85);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:18px 48px}
+.app{max-width:500px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.label{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+
+/* Header */
+header{display:flex;flex-direction:column;gap:14px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:46px;height:46px;flex:none;border-radius:14px;box-shadow:0 10px 24px -12px rgba(91,33,182,.7)}
+.brand h1{font-family:var(--display);font-weight:800;font-size:2rem;line-height:1;margin:0;letter-spacing:-.03em}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:.84rem;line-height:1.35}
+.proto{font-family:var(--mono);font-size:.62rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;vertical-align:middle;margin-left:8px;padding:3px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.switch{display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px}
+.switch button{border:0;background:transparent;border-radius:999px;padding:10px 6px;font-weight:700;font-size:.86rem;color:var(--muted)}
+.switch button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+/* Patron bar */
+.patron{display:flex;flex-direction:column;gap:12px}
+.scroller{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px}
+.scroller::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:.8rem;font-weight:700;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.rg{font-family:var(--mono);font-size:.62rem;font-weight:600;letter-spacing:.06em;opacity:.7}
+.me{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center}
+.pav{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:1.1rem;color:#fff;
+  background:var(--btn);box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--gold)}
+.me b{display:block;font-size:1rem}
+.me span{display:block;color:var(--muted);font-size:.82rem;line-height:1.35}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stats > div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;min-width:0}
+.stats b{display:block;font-size:1.1rem}
+.stats .tier{font-family:var(--display);font-weight:800;color:var(--gold)}
+.stats small{display:block;color:var(--muted);font-size:.74rem}
+.instant{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--gold-soft);color:var(--ink);border-radius:12px;padding:8px 12px;font-size:.8rem}
+.instant svg{width:14px;height:14px;color:var(--gold);vertical-align:-2px;margin-right:4px}
+.notes{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:.84rem}
+.notes summary{cursor:pointer;font-weight:700}
+.notes p{margin:8px 0 0}
+.notes small{display:block;color:var(--muted)}
+.filters .chip{font-weight:600}
+
+/* Deck */
+.deck{position:relative;height:530px;max-width:100%}
+.bill{position:absolute;inset:0;background:var(--card);border-radius:26px;box-shadow:var(--shadow);border:1px solid var(--line);
+  display:flex;flex-direction:column;touch-action:none;user-select:none;-webkit-user-select:none;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s;overflow:hidden}
+.bill.top{cursor:grab}
+.bill.top:active{cursor:grabbing}
+/* The profile header is a coloured band picked from the owner's name; its text is white in both themes. */
+.hero{position:relative;padding:44px 16px 16px;color:#fff;display:flex;gap:12px;align-items:flex-end;flex:none;
+  background:linear-gradient(140deg,hsl(var(--h) 55% 30%),hsl(calc(var(--h) + 50) 62% 40%))}
+.hero.private{background:linear-gradient(140deg,#3B3350,#5B5370)}
+.av{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;flex:none;font-family:var(--display);font-weight:800;font-size:1.4rem;
+  background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.75)}
+.ht{min-width:0}
+.ht h3{margin:0;font-family:var(--display);font-weight:800;font-size:1.5rem;line-height:1.05;letter-spacing:-.02em}
+.ht .where{display:block;font-size:.78rem;font-weight:600;opacity:.85;margin-top:2px}
+.ht p{margin:4px 0 0;font-size:.85rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.due-pill{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:3px 10px;font-size:.72rem;font-weight:700}
+.due-pill.soon{background:#fff;color:#A3162B}
+.body{padding:12px 16px 12px;display:flex;flex-direction:column;gap:9px;flex:1;min-height:0}
+.vrow{display:flex;flex-wrap:wrap;gap:6px}
+.vchip{font-size:.7rem;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--yes-soft);color:var(--yes);white-space:nowrap}
+.vchip.link{background:var(--royal-soft);color:var(--royal)}
+.billrow{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:8px 10px 8px 8px}
+.bthumb{width:46px;height:46px;border-radius:12px;background:var(--soft);display:grid;place-items:center;overflow:hidden;font-family:var(--mono);font-size:.6rem;font-weight:600;color:var(--muted)}
+.bthumb img{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.bt{min-width:0}
+.bt b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.92rem}
+.bt .label{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bamt{font-weight:600;font-size:.9rem;text-align:right;white-space:nowrap}
+.bio-c{margin:0;font-size:.84rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pitch{margin:0;font-size:.88rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cost{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;gap:10px;background:var(--soft);border-radius:16px;padding:10px 12px}
+.cost b{display:block;font-family:var(--display);font-weight:800;font-size:1.65rem;line-height:1.05;letter-spacing:-.02em}
+.cost-r{text-align:right;font-size:.72rem;color:var(--muted);line-height:1.35}
+.cost.blocked b{font-size:1rem;color:var(--no)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tag{font-size:.64rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--muted)}
+.tag.fast{color:var(--gold);border-color:var(--gold)}
+.tag.warn{color:var(--no);border-color:var(--no)}
+.more{margin-left:auto;border:0;background:transparent;color:var(--royal);font-weight:800;font-size:.8rem;padding:2px 0}
+.stamp{position:absolute;top:16px;font-family:var(--display);font-weight:800;font-size:1.6rem;padding:2px 14px;border:3px solid #fff;border-radius:12px;opacity:0;pointer-events:none;letter-spacing:.04em;color:#fff}
+.stamp.pay{left:16px;background:#0B7F56;transform:rotate(-12deg)}
+.stamp.nope{right:16px;background:#C62E45;transform:rotate(12deg)}
+.stamp.save{left:50%;top:22px;background:#9A6400;transform:translateX(-50%)}
+.empty{position:absolute;inset:0;border:2px dashed var(--line);border-radius:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px}
+.empty h3{font-family:var(--display);font-weight:800;font-size:1.7rem;margin:0}
+.empty p{margin:0;color:var(--muted);max-width:30ch}
+
+.actions{display:flex;justify-content:center;align-items:center;gap:22px;position:sticky;bottom:12px;z-index:15}
+.act{border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);transition:transform .15s}
+.act:hover{transform:translateY(-2px)}
+.act:active{transform:scale(.94)}
+.act:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.act.nope{width:60px;height:60px;color:var(--no)}
+.act.save{width:60px;height:60px;color:var(--gold)}
+.act.save.on svg{fill:currentColor}
+.act.grant{width:80px;height:80px;background:var(--btn);color:#fff;border:0}
+.act svg{width:26px;height:26px}
+.act.grant svg{width:38px;height:38px}
+.hint{text-align:center;font-size:.76rem;color:var(--muted);margin:-4px 0 0}
+kbd{font-family:var(--mono);font-size:.7rem;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.batch{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--card);border:1px solid var(--gold);border-radius:16px;padding:10px 12px;font-size:.84rem}
+.batch b{display:block}
+.batch span{color:var(--muted);font-size:.78rem}
+.batch p{margin:0;color:var(--muted)}
+.toast{display:flex;justify-content:center;align-items:center;gap:10px;font-size:.84rem;color:var(--muted);flex-wrap:wrap;text-align:center}
+
+/* Bill owner side */
+.summary{display:flex;gap:10px;flex-wrap:wrap}
+.stat{flex:1 1 130px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--card)}
+.stat .v{font-size:1.3rem;font-weight:600}
+.panel{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:18px;padding:14px 16px;background:var(--card)}
+.panel h2{margin:0;font-size:.95rem;font-weight:800}
+.panel p{margin:0;font-size:.82rem;color:var(--muted)}
+.tw{display:flex;flex-direction:column;gap:3px;border-top:1px dashed var(--line);padding-top:10px}
+.tw-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tw-head b{font-size:.86rem}
+.tw p{margin:0;font-size:.8rem;color:var(--muted)}
+.tw.warn .num{color:var(--no);font-weight:600}
+form.upload{display:flex;flex-direction:column;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px}
+form.upload h2,.vh{margin:0;font-family:var(--display);font-weight:800;font-size:1.5rem;letter-spacing:-.02em}
+.step{margin:8px 0 0;font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--royal);font-weight:800}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field > label{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px 12px;width:100%}
+.field textarea{resize:vertical;min-height:68px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:420px){.grid2{grid-template-columns:1fr}}
+.check{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;font-size:.84rem;cursor:pointer}
+.check input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--royal)}
+.check small{display:block;color:var(--muted);font-size:.78rem}
+.hint-s{color:var(--muted);font-size:.78rem}
+.pep{border:0;padding:0;margin:0}
+.pep legend{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted);padding:0;margin-bottom:5px}
+.radios{display:flex;gap:18px;flex-wrap:wrap}
+.radio{display:inline-flex;gap:6px;align-items:center;font-size:.9rem;cursor:pointer}
+.radio input{accent-color:var(--royal);width:16px;height:16px;margin:0}
+.profile-fields{display:flex;flex-direction:column;gap:12px;border-left:3px solid var(--royal-soft);padding-left:12px}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;background:var(--bg)}
+.drop.over{border-color:var(--royal)}
+.drop .thumb{width:54px;height:54px;border-radius:10px;background:var(--line);flex:none;overflow:hidden;display:grid;place-items:center;font-family:var(--mono);font-size:.6rem;color:var(--muted)}
+.drop .thumb img{width:100%;height:100%;object-fit:cover}
+.drop span{font-size:.86rem;color:var(--muted);min-width:0}
+.drop b{color:var(--ink)}
+.redact{display:flex;flex-direction:column;gap:8px}
+.redact-stage{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none;max-width:100%}
+.redact-stage img{display:block;width:100%;height:auto;pointer-events:none}
+/* Redaction boxes are baked into the image as black, so they stay black in both themes. */
+.redact-stage .box{position:absolute;background:#000}
+.redact-stage .box.live{background:rgba(0,0,0,.6);outline:2px dashed var(--royal)}
+.redact-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.redact-bar span{flex:1 1 200px}
+.primary{border:0;background:var(--btn);color:#fff;font-weight:800;border-radius:999px;padding:12px 18px}
+.primary:disabled{opacity:.45;cursor:not-allowed}
+.primary.sm{padding:8px 14px;font-size:.84rem}
+.ghost{border:1px solid var(--line);background:transparent;border-radius:999px;padding:8px 14px;font-weight:600;font-size:.84rem}
+.err{color:var(--no);font-size:.84rem;margin:0}
+.note{color:var(--muted);font-size:.84rem;margin:0}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.sr-only:focus-visible + .drop{outline:2px solid var(--royal);outline-offset:2px}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:18px;background:var(--card);overflow:hidden}
+.list-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.list-head h2{margin:0;font-size:.95rem;font-weight:800}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item .badge{width:44px;height:44px;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:var(--soft);font-family:var(--mono);font-size:.6rem;font-weight:600;letter-spacing:.06em}
+.item .badge img{width:100%;height:100%;object-fit:cover}
+.item .t{min-width:0}
+.item .t b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .t span{font-size:.78rem;color:var(--muted)}
+.item .r{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.item .wide{grid-column:1/-1;display:flex;gap:8px;align-items:center}
+.item .wide input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 12px}
+.item .said{grid-column:1/-1;font-size:.8rem;color:var(--muted);margin:-4px 0 0}
+.pill{font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.pill.open{background:var(--royal-soft);color:var(--royal)}
+.pill.paid{background:var(--yes-soft);color:var(--yes)}
+.pill.fail{background:var(--no-soft);color:var(--no)}
+.pill.check{background:var(--bg);color:var(--muted);border:1px dashed var(--line)}
+.x{border:0;background:transparent;color:var(--muted);font-size:.72rem;padding:0;text-decoration:underline}
+.cq{display:flex;flex-direction:column;gap:10px}
+.citem{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:14px;display:flex;flex-direction:column;gap:6px}
+.citem p{margin:0;font-size:.84rem}
+.citem .why{color:var(--no);font-weight:600}
+.ctop{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.cact{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:4px}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:var(--scrim);display:grid;place-items:center;z-index:20;
+  padding:max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+#fid-overlay{z-index:30}
+.faceid{width:240px;border-radius:44px;background:var(--card);display:flex;flex-direction:column;align-items:center;padding:26px 18px;box-shadow:var(--shadow);gap:6px;text-align:center}
+.faceid svg{width:92px;height:92px;color:var(--ink)}
+.faceid .scan{animation:scan 1.1s ease-in-out infinite alternate}
+.faceid .ok{display:none;color:var(--yes)}
+.faceid.done .scan,.faceid.done .face{display:none}
+.faceid.done .ok{display:block}
+.faceid b{font-family:var(--display);font-weight:800;font-size:1.5rem}
+.faceid p{margin:0;font-size:.82rem;font-weight:700;color:var(--muted)}
+.faceid small{color:var(--muted);font-size:.74rem}
+@keyframes scan{from{transform:translateY(-26px)}to{transform:translateY(26px)}}
+
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow);width:100%;max-width:460px;max-height:100%;overflow:auto;
+  padding:0 0 20px;display:flex;flex-direction:column;gap:16px}
+.sheet > *:not(.hero){margin-inline:20px}
+.sheet .hero{padding-top:20px;border-radius:26px 26px 0 0}
+.sheet h2{margin:0;font-family:var(--display);font-weight:800;font-size:1.6rem;line-height:1.05;letter-spacing:-.02em}
+.about{margin:0;font-size:.9rem}
+.sec{display:flex;flex-direction:column;gap:6px}
+.rows{display:flex;flex-direction:column}
+.rows .r{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:.84rem}
+.rows .r span:first-child{min-width:0}
+.rows .r .num{white-space:nowrap}
+.rows .r.total{border-bottom:0;font-weight:800;font-size:1rem;padding-top:10px}
+.rows .r.total .num{font-family:var(--display);font-weight:800;font-size:1.6rem}
+.route{font-size:.84rem;display:flex;flex-direction:column;gap:2px}
+.route b{font-weight:700}
+.route code{font-family:var(--mono);font-size:.78rem}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:.82rem}
+.checks li{display:grid;grid-template-columns:18px 1fr;gap:8px}
+.checks li::before{content:"✓";color:var(--yes);font-weight:800}
+.checks a{color:var(--royal);font-weight:700}
+.checks .sample{color:var(--muted);font-family:var(--mono);font-size:.76rem}
+.sheet-photo{width:100%;max-height:220px;object-fit:contain;border-radius:12px;border:1px solid var(--line);background:var(--soft)}
+.taxnote{font-size:.82rem;margin:0}
+.taxnote b{display:block;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.blocked{background:var(--no-soft);color:var(--no);border-radius:12px;padding:10px 12px;font-size:.84rem;font-weight:600;margin:0}
+.why-full{background:var(--gold-soft);border-radius:12px;padding:10px 12px;font-size:.82rem;margin:0}
+.report summary{cursor:pointer;color:var(--muted);font-size:.8rem;text-decoration:underline}
+.report .rep{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.report select{flex:1 1 200px;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:8px 10px}
+.sheet-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:nowrap;position:sticky;bottom:-20px;background:var(--card);padding-block:10px;margin-bottom:-14px}
+.sheet-actions .primary{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.sheet-actions .primary svg{width:20px;height:20px;flex:none}
+.fine{font-size:.72rem;color:var(--muted);margin:0}
+
+.match{background:var(--card);border-radius:26px;padding:26px 22px;max-width:380px;width:100%;max-height:100%;overflow:auto;text-align:center;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.match h2{font-family:var(--display);font-weight:800;font-size:2.3rem;line-height:1;margin:0;letter-spacing:-.03em;
+  background:linear-gradient(135deg,#7C3AED,#C026D3 55%,#D97706);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pair{display:flex;justify-content:center}
+.pair > div{width:78px;height:78px;border-radius:50%;display:grid;place-items:center;border:3px solid var(--card);font-family:var(--display);font-weight:800;font-size:1.5rem;color:#fff}
+.pair .a{background:var(--btn);margin-right:-14px;z-index:1}
+.pair .b{background:linear-gradient(140deg,hsl(var(--h) 55% 30%),hsl(calc(var(--h) + 50) 62% 40%))}
+.match p{margin:0}
+.facts{font-size:.82rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px;display:flex;flex-direction:column;gap:4px;text-align:left}
+.facts b{color:var(--ink)}
+.footer-note{font-size:.74rem;color:var(--muted);text-align:center;margin:0}
+@media (prefers-reduced-motion: reduce){.bill,.act{transition:none}.faceid .scan{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+        <defs><linearGradient id="boon-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B21B6"/><stop offset=".55" stop-color="#A21CAF"/><stop offset="1" stop-color="#F59E0B"/></linearGradient></defs>
+        <rect width="48" height="48" rx="14" fill="url(#boon-g)"/>
+        <path d="M16.5 10v24" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="24.5" cy="27" r="7.5" fill="none" stroke="#fff" stroke-width="5"/>
+        <path d="M35 6.5l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z" fill="#fff"/>
+      </svg>
+      <div><h1>Boon<span class="proto">Prototype</span></h1><p>Swipe right to grant a boon. Patrons in 60+ countries pay real bills, straight to the biller. No real money moves in this demo.</p></div>
+    </div>
+    <div class="switch" role="group" aria-label="Who are you?">
+      <button id="mode-bills" type="button">My bills</button>
+      <button id="mode-rich" type="button">Patron</button>
+      <button id="mode-compliance" type="button">Compliance</button>
+    </div>
+  </header>
+
+  <section id="view-rich" hidden style="display:flex;flex-direction:column;gap:14px">
+    <div class="patron">
+      <div class="scroller" id="chips" role="group" aria-label="Choose a patron"></div>
+      <div class="me"><div class="pav" id="av"></div><div><b id="pname"></b><span id="pbio"></span></div></div>
+      <div class="stats">
+        <div><span class="label" id="pgiven-label">Given this year</span><b class="num" id="pgiven"></b></div>
+        <div><span class="label">Standing</span><b class="tier" id="ptier"></b><small id="ptier-next"></small></div>
+      </div>
+      <div class="instant" id="instant" hidden></div>
+      <details class="notes" id="notes" hidden><summary id="notes-sum"></summary><div id="notes-list"></div></details>
+    </div>
+    <div class="scroller filters" id="filters" role="group" aria-label="Filter bills"></div>
+    <div class="deck" id="deck"></div>
+    <div class="actions">
+      <button class="act nope" id="btn-nope" type="button" aria-label="Pass on this bill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <button class="act grant" id="btn-grant" type="button" aria-label="Grant this bill with Face ID">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M8.5 9v1.5M15.5 9v1.5M12 9v4.2l-1 .3M9 16.2c1.8 1.4 4.2 1.4 6 0"/></svg>
+      </button>
+      <button class="act save" id="btn-save" type="button" aria-label="Save for later">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>
+      </button>
+    </div>
+    <p class="hint">Swipe right to grant, left to pass, up to save. Tap a card for the full profile and every charge. Keys: <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>I</kbd></p>
+    <div class="batch" id="batch" hidden></div>
+    <div class="toast" id="toast" role="status" hidden><span id="toast-text"></span><button class="ghost" type="button" id="undo-btn">Undo</button></div>
+  </section>
+
+  <section id="view-bills" hidden style="display:flex;flex-direction:column;gap:18px">
+    <div class="summary">
+      <div class="stat"><div class="label">Bills granted</div><div class="v num" id="s-covered"></div></div>
+      <div class="stat"><div class="label">Still waiting</div><div class="v num" id="s-waiting"></div></div>
+    </div>
+
+    <div class="panel" id="taxwatch"></div>
+
+    <form class="upload" id="form" novalidate>
+      <h2>Upload a bill</h2>
+      <p class="note">The money goes straight to the biller, never to you. Patrons see the bill and, if you choose, a short profile. Your full name stays with the compliance team.</p>
+      <h3 class="step">1 · The bill</h3>
+      <input type="file" id="f-photo" class="sr-only" accept="image/*">
+      <label class="drop" id="drop" for="f-photo">
+        <span class="thumb" id="thumb">PHOTO</span>
+        <span><b>Add a photo of the bill</b><br>Tap to choose, or drop an image here.</span>
+      </label>
+      <div class="redact" id="redact" hidden>
+        <div class="redact-stage" id="redact-stage"><img id="redact-img" alt="Your bill photo"></div>
+        <div class="redact-bar"><span>Drag across your name, address and anything personal to black it out. Patrons only see what's left.</span>
+          <button class="ghost" type="button" id="redact-undo">Undo</button>
+          <button class="ghost" type="button" id="redact-clear">Remove photo</button></div>
+        <label class="check" for="f-redacted"><input type="checkbox" id="f-redacted"><span>I've blacked out my name, address and anything personal</span></label>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="f-region">Where the bill is</label><select id="f-region"></select></div>
+        <div class="field"><label for="f-cat">Kind of bill</label><select id="f-cat"></select></div>
+      </div>
+      <div class="field"><label for="f-payee">Who's owed</label><input id="f-payee" placeholder="Kaveri Power Distribution" maxlength="48" required></div>
+      <div class="grid2">
+        <div class="field"><label for="f-amount" id="f-amount-label">Amount</label><input id="f-amount" class="num" inputmode="decimal" placeholder="2840" required></div>
+        <div class="field"><label for="f-due">Due date</label><input id="f-due" type="date"></div>
+      </div>
+      <div class="field"><label for="f-account">Consumer or account number</label><input id="f-account" class="num" maxlength="30" placeholder="Needed to check the bill with the biller" autocomplete="off" required></div>
+
+      <h3 class="step">2 · About you</h3>
+      <div class="grid2">
+        <div class="field"><label for="f-owner">Your full name</label><input id="f-owner" maxlength="60" autocomplete="name" placeholder="As on your ID" required></div>
+        <div class="field"><label for="f-city">City or town</label><input id="f-city" maxlength="40" autocomplete="address-level2" placeholder="Pune" required></div>
+      </div>
+      <small class="hint-s">Your full name goes to the compliance team only, for the identity and sanctions checks the law requires.</small>
+      <fieldset class="field pep">
+        <legend>Are you, or a close family member, a public official?</legend>
+        <small class="hint-s">For example a government officer, judge, elected representative, or senior official of a state-owned company. If yes, the bill gets an extra review before it reaches any deck.</small>
+        <div class="radios">
+          <label class="radio" for="f-pep-no"><input type="radio" name="pep" value="no" id="f-pep-no"> No</label>
+          <label class="radio" for="f-pep-yes"><input type="radio" name="pep" value="yes" id="f-pep-yes"> Yes</label>
+        </div>
+      </fieldset>
+      <label class="check" for="f-fcra">
+        <input type="checkbox" id="f-fcra">
+        <span>I can accept gifts from abroad<small id="fcra-text"></small></span>
+      </label>
+
+      <h3 class="step">3 · Your profile</h3>
+      <label class="check" for="f-show"><input type="checkbox" id="f-show" checked>
+        <span>Show a profile to patrons<small>Your first name, city, what you do now, and links that prove you're real. Patrons can check you out before they grant. Untick to stay anonymous.</small></span></label>
+      <div class="profile-fields" id="profile-fields">
+        <div class="field"><label for="f-now">What you're doing now</label><input id="f-now" maxlength="70" placeholder="Final-year nursing student at a city hospital"></div>
+        <div class="field"><label for="f-about">A bit about you (optional)</label><textarea id="f-about" maxlength="200" placeholder="Two or three lines. No phone numbers, emails or social handles."></textarea></div>
+        <div class="field"><label for="f-li">LinkedIn (optional)</label><input id="f-li" inputmode="url" autocomplete="off" placeholder="linkedin.com/in/your-name"></div>
+        <div class="field"><label for="f-gh">GitHub (optional)</label><input id="f-gh" inputmode="url" autocomplete="off" placeholder="github.com/your-handle"></div>
+        <div class="field"><label for="f-web">Website or portfolio (optional)</label><input id="f-web" inputmode="url" autocomplete="off" placeholder="yourname.com"></div>
+        <small class="hint-s">A link gets a tick only once we confirm it's yours: you sign in with GitHub, your LinkedIn sign-in name matches your ID, or you put a code on your website. Messaging, payment and link-shortener sites aren't allowed.</small>
+      </div>
+
+      <h3 class="step">4 · A note, and your consent</h3>
+      <div class="field"><label for="f-pitch">Your note (optional)</label><textarea id="f-pitch" maxlength="160" placeholder="One or two lines on what this bill is for. No phone numbers, emails or links."></textarea></div>
+      <label class="check" for="f-consent"><input type="checkbox" id="f-consent">
+        <span>I agree to the checks and to sharing what I chose<small id="f-law"></small></span></label>
+      <p class="err" id="err" role="alert" hidden></p>
+      <p class="note" id="note" role="status" hidden></p>
+      <button class="primary" type="submit">Check and add to the deck</button>
+    </form>
+
+    <div class="list">
+      <div class="list-head"><h2>Your bills</h2><button class="ghost" type="button" id="reset">Erase and restore examples</button></div>
+      <div id="items"></div>
+    </div>
+    <div class="panel" id="datacard"></div>
+  </section>
+
+  <section id="view-compliance" hidden style="display:flex;flex-direction:column;gap:14px">
+    <div><h2 class="vh">Compliance review</h2>
+      <p class="note">Only the compliance team sees this screen. Bill owners' full names and screening results never reach patrons, and a rejected bill owner is never told why. In the real app this screen sits behind staff sign-in.</p></div>
+    <div class="cq" id="cq"></div>
+    <div class="list"><div class="list-head"><h2>Decisions</h2></div><div id="cdone"></div></div>
+  </section>
+
+  <p class="footer-note">A prototype. No money moves, Face ID is a pretend scan, and checks are simulated: an account number shorter than 6 characters isn't found, one ending in 000 is already paid, and every profile link passes its ownership check. Screening lists are made-up samples: try Ravi Deshmukh for a public official, Viktor Sample for a sanctions match, or the city Sevastopol for a sanctioned region. Exchange rates are fixed samples. Detailed tax rules cover India, the US, the UK and the eurozone; other countries get general guidance and a US$2,000 cap per payment. Boon isn't offered under broad sanctions, such as in Iran, North Korea, Syria, Cuba, Russia, Belarus and occupied regions of Ukraine. Fees and rules are simplified summaries as of November 2026, not tax or legal advice. Real payments need a licensed partner in each country.</p>
+</div>
+
+<div class="overlay" id="sheet-overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-title" id="sheet"></div>
+</div>
+
+<div class="overlay" id="fid-overlay" hidden>
+  <div class="faceid" id="faceid">
+    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round">
+      <g class="face">
+        <path d="M10 32V20a10 10 0 0 1 10-10h12M68 10h12a10 10 0 0 1 10 10v12M90 68v12a10 10 0 0 1-10 10H68M32 90H20a10 10 0 0 1-10-10V68"/>
+        <path d="M35 38v6M65 38v6M50 38v18l-4 1.5M37 66c7.5 6 18.5 6 26 0"/>
+      </g>
+      <line class="scan" x1="18" y1="50" x2="82" y2="50" stroke-width="3" opacity=".55"/>
+      <g class="ok"><circle cx="50" cy="50" r="38"/><path d="M33 51l11 11 23-24"/></g>
+    </svg>
+    <b id="fid-amt" class="num"></b>
+    <p id="fid-text" role="status" aria-live="polite"></p>
+    <small id="fid-sub"></small>
+  </div>
+</div>
+
+<div class="overlay" id="match-overlay" hidden>
+  <div class="match" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <h2 id="m-title">Boon granted.</h2>
+    <div class="pair"><div class="a" id="m-av"></div><div class="b" id="m-bill"></div></div>
+    <p id="m-line"></p>
+    <div class="facts" id="m-facts"></div>
+    <button class="primary" type="button" id="m-close">Back to the deck</button>
+  </div>
+</div>
+
+<script>
+const KEY = 'boon-v1';
+const OLD_KEYS = ['signet-v1', 'sugar-ledger-v4']; // bills saved under the app's earlier names
+
+/* ---------- Money, countries and rules ---------- */
+const EUROZONE = 'AT BE BG HR CY EE FI FR DE GR IE IT LV LT LU MT NL PT SK SI ES'.split(' ');
+// Sample rates as US dollars per unit of each currency. Not live: a real build takes rates from the payment partner.
+const USD_PER = {USD:1, INR:1/88.5, EUR:1.16, GBP:1.32, JPY:1/150, CNY:0.14, CAD:0.72, AUD:0.65, NZD:0.58, CHF:1.25, SGD:0.77, HKD:0.128,
+  AED:0.2723, SAR:0.2667, QAR:0.2747, KWD:3.26, ILS:0.3, TRY:1/42, EGP:1/48, NGN:1/1500, KES:1/129, GHS:1/11.5, ZAR:0.057,
+  BRL:0.185, MXN:0.054, ARS:1/1400, CLP:1/950, COP:1/3900, PEN:0.28, KRW:1/1400, IDR:1/16500, MYR:0.237, THB:0.031, PHP:1/58,
+  VND:1/26300, PKR:1/281, BDT:1/122, LKR:1/300, NPR:1/141, SEK:0.105, NOK:0.099, DKK:0.155, PLN:0.27, CZK:0.047, HUF:1/345, RON:0.228,
+  UAH:1/41.5};
+// Countries Boon serves, with their currency. Places under broad sanctions (such as Iran, North Korea, Syria, Cuba,
+// Russia and Belarus) are left out, because payment partners can't operate there. Sanctioned regions are caught by city.
+const COUNTRY_CUR = {...Object.fromEntries(EUROZONE.map(c=>[c, 'EUR'])), US:'USD', IN:'INR', GB:'GBP', JP:'JPY', CN:'CNY', CA:'CAD',
+  AU:'AUD', NZ:'NZD', CH:'CHF', SG:'SGD', HK:'HKD', AE:'AED', SA:'SAR', QA:'QAR', KW:'KWD', IL:'ILS', TR:'TRY', EG:'EGP', NG:'NGN',
+  KE:'KES', GH:'GHS', ZA:'ZAR', BR:'BRL', MX:'MXN', AR:'ARS', CL:'CLP', CO:'COP', PE:'PEN', KR:'KRW', ID:'IDR', MY:'MYR', TH:'THB',
+  PH:'PHP', VN:'VND', PK:'PKR', BD:'BDT', LK:'LKR', NP:'NPR', SE:'SEK', NO:'NOK', DK:'DKK', PL:'PLN', CZ:'CZK', HU:'HUF', RO:'RON',
+  UA:'UAH'};
+let regionNames = null; try { regionNames = new Intl.DisplayNames(['en'], {type:'region'}); } catch(e){}
+const COUNTRIES = Object.fromEntries(Object.entries(COUNTRY_CUR).map(([c, cur])=>
+  [c, {cur, usd:USD_PER[cur], locale:'en-' + c, name:regionNames?.of(c) || c}]));
+// Which rule set applies. India, the US, the UK and the eurozone have detailed rules; everywhere else gets general guidance.
+const pack = c => ['IN','US','GB'].includes(c) ? c : EUROZONE.includes(c) ? 'EU' : 'GEN';
+const CATS = {UTIL:'Electricity, gas or water', RENT:'Rent', EDU:'School or college fees', MED:'Medical', LOAN:'Loan or EMI',
+  NET:'Phone or internet', PET:'Pet', FINE:'Fine or ticket', SUBS:'Subscription', MISC:'Something else'};
+const RULES = {
+  fxMargin:0.005, serviceFee:0.015,
+  inGiftFree:50000,          // India: gifts from non-relatives, per financial year
+  lrsUsd:250000,             // India: Liberalised Remittance Scheme, per financial year
+  tcsFree:1e6, tcsRate:0.2,  // India: TCS on LRS gifts above ₹10 lakh per financial year
+  usExclusion:19000,         // US: annual gift exclusion per recipient
+  us3520:100000,             // US: report gifts from foreign individuals above this
+  maxBillUsd:50000,
+  genCapUsd:2000,            // per payment, wherever a country with general guidance only is involved
+  rememberDays:30,           // how long a patron's declarations count for instant grants
+};
+const MAX_UPLOAD = 20 * 1024 * 1024;
+// Countries with foreign exchange controls, where payouts go at the official rate through a licensed bank.
+const FX_CONTROLS = ['AR', 'NG', 'EG'];
+// Who holds the licence at each end. Outside the detailed-rules countries, a local partner is named before launch.
+const LICENCE = {IN:'an RBI-authorised bank, through Bharat BillPay', US:'a FinCEN-registered, state-licensed money transmitter',
+  GB:'an FCA-authorised payment institution', EU:'an e-money institution licensed in the EU'};
+const licensed = c => LICENCE[pack(c)] || `a partner licensed in ${COUNTRIES[c].name}, named before launch there`;
+const EEA = [...EUROZONE, 'SE', 'DK', 'PL', 'CZ', 'HU', 'RO', 'NO'];
+const DATA_LAW = {IN:"India's Digital Personal Data Protection Act, 2023", GB:'the UK GDPR', US:"US state privacy laws, such as California's CCPA",
+  BR:"Brazil's LGPD", SG:"Singapore's PDPA", NG:'the Nigeria Data Protection Act, 2023', KE:"Kenya's Data Protection Act, 2019",
+  ZA:"South Africa's POPIA", AE:"the UAE's personal data protection law", SA:"Saudi Arabia's PDPL", JP:"Japan's APPI",
+  CN:"China's PIPL, which can require data to stay in China", KR:"Korea's PIPA", CA:"Canada's PIPEDA", AU:"Australia's Privacy Act 1988",
+  NZ:"New Zealand's Privacy Act 2020", CH:"Switzerland's revised data protection act", TH:"Thailand's PDPA",
+  PH:"the Philippines' Data Privacy Act of 2012", ID:"Indonesia's personal data protection law", MY:"Malaysia's PDPA"};
+const lawFor = c => EEA.includes(c) ? 'the GDPR' : DATA_LAW[c] || `${COUNTRIES[c].name}'s data protection law`;
+
+// Sample screening lists, made up for the prototype. A real build uses a licensed PEP and sanctions data provider.
+const PEP_LIST = [
+  {name:'Ravi Deshmukh', role:'Deputy Commissioner of Income Tax'},
+  {name:'Arjun Malhotra', role:'Member of Legislative Assembly'},
+  {name:'Margaret Hale', role:'City councillor'},
+  {name:'Pieter de Wit', role:'Senior customs official'},
+];
+const SANCTIONS_LIST = ['Viktor Sample', 'Ivan Testov'];
+const SANCTIONED_AREAS = ['crimea', 'krym', 'sevastopol', 'donetsk', 'luhansk', 'lugansk'];
+const SCREEN_RESULTS = ['clear', 'held', 'cleared', 'rejected', 'blocked'];
+// Shown to the bill owner for any refusal, so a sanctions or suspicion match is never revealed to them.
+const REFUSED_NOTE = "We can't accept this bill. Contact support for details.";
+const nameTokens = s => String(s || '').normalize('NFKD').toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+// Two name parts match if they are equal, or, for parts of 5 letters or more, one typo apart:
+// a changed, missing or extra letter (Victor and Viktor), or two letters swapped (Sample and Sampel).
+function near(a, b){
+  if (a === b) return true;
+  if (Math.min(a.length, b.length) < 5 || Math.abs(a.length - b.length) > 1) return false;
+  if (a.length === b.length){
+    const k = [...a].findIndex((c, x)=>c !== b[x]);
+    if (a[k] === b[k+1] && a[k+1] === b[k] && a.slice(k+2) === b.slice(k+2)) return true;
+  }
+  let i = 0, j = 0, edits = 0;
+  while (i < a.length && j < b.length){
+    if (a[i] === b[j]){ i++; j++; continue; }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+const nameMatches = (input, listed) => { const have = nameTokens(input), want = nameTokens(listed); return want.length > 0 && want.every(t=>have.some(h=>near(h, t))); };
+function screenOwner(bill){
+  if (SANCTIONS_LIST.some(n=>nameMatches(bill.ownerName, n))) return {result:'blocked', reason:'Sanctions list match'};
+  if (nameTokens(bill.city).some(t=>SANCTIONED_AREAS.includes(t))) return {result:'blocked', reason:'Sanctioned region'};
+  const pep = PEP_LIST.find(p=>nameMatches(bill.ownerName, p.name));
+  if (pep) return {result:'held', reason:`Possible match: ${pep.role} (sample list)`};
+  if (bill.pepDeclared) return {result:'held', reason:'Bill owner says they or close family hold public office'};
+  return {result:'clear', reason:''};
+}
+const PHOTO_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/;
+// Free text can't carry contact details: patrons pay the biller, and the two sides never reach each other off Boon.
+// Catches links, emails and UPI IDs (name@bank), and phone numbers of 10 or more digits.
+const CONTACT_RE = /(https?:\/\/|www\.|[\w.+-]+@[\w-]+|\+?\d[\d\s().-]{8,}\d)/i;
+const MAX_WAITING = 5; // bills one person can have waiting at once, to limit farming
+
+// Profile links: only a LinkedIn profile, a GitHub account, and one website. Messaging, payment and
+// link-shortener sites are refused, because they would let money or contact move outside Boon.
+const BLOCKED_HOSTS = /(^|\.)(wa\.me|whatsapp\.com|t\.me|telegram\.(me|org)|signal\.me|bit\.ly|tinyurl\.com|t\.co|goo\.gl|linktr\.ee|paypal\.(me|com)|venmo\.com|cash\.app|buymeacoffee\.com|ko-fi\.com|gofundme\.com|patreon\.com|instagram\.com|facebook\.com|x\.com|twitter\.com|tiktok\.com|snapchat\.com|onlyfans\.com)$/;
+function cleanLink(kind, v){
+  v = typeof v === 'string' ? v.trim() : '';
+  if (!v) return '';
+  if (v.length > 120) return null;
+  let u; try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : 'https://' + v); } catch(e){ return null; }
+  if (u.protocol !== 'https:' || u.username || u.password || u.port) return null;
+  const host = u.hostname.toLowerCase(), path = u.pathname.replace(/\/+$/, '');
+  if (kind === 'linkedin') return /^(www\.)?linkedin\.com$/.test(host) && /^\/in\/[A-Za-z0-9_%-]{3,100}$/.test(path) ? 'https://www.linkedin.com' + path : null;
+  if (kind === 'github') return host === 'github.com' && /^\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(path) ? 'https://github.com' + path : null;
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) || /^[\d.]+$/.test(host) || /(^|\.)xn--/.test(host)
+    || BLOCKED_HOSTS.test(host) || /(^|\.)(linkedin|github)\.com$/.test(host) || !/^[\w\/.~%-]*$/.test(path)) return null;
+  return 'https://' + host + path;
+}
+const LINK_KINDS = [['linkedin', 'LinkedIn'], ['github', 'GitHub'], ['web', 'Website']];
+// How each kind of link is proven to belong to the bill owner (simulated here).
+const LINK_PROOF = {linkedin:'sign-in with LinkedIn matches the name on their ID', github:'they signed in with this GitHub account',
+  web:'they put a Boon code on the site'};
+
+const PATRONS = [
+  {id:'meera', name:'Meera Raghunathan', init:'MR', region:'IN', city:'Bengaluru', bio:'Sold her logistics company. Now quietly pays school fees and tells nobody except this app.'},
+  {id:'vane', name:'Thaddeus Vane III', init:'TV', region:'US', city:'New York', bio:'Owns four boats, uses one. Likes clearing medical bills before breakfast.'},
+  {id:'annelie', name:'Annelie Vos', init:'AV', region:'NL', city:'Amsterdam', bio:'Retired early from shipping. Picks the bills with the best notes.'},
+  {id:'hugo', name:'Hugo Ashcombe', init:'HA', region:'GB', city:'London', bio:'Inherited a castle, its leaking roof, and a strong sense of obligation.'},
+  {id:'khalid', name:'Khalid Al Mansoori', init:'KM', region:'AE', city:'Dubai', bio:'Made his fortune in desalination plants. Has a soft spot for water bills.'},
+  {id:'weiling', name:'Wei Ling Tan', init:'WT', region:'SG', city:'Singapore', bio:'Runs a family office. Treats each boon like a small, well-chosen investment.'},
+  {id:'adaeze', name:'Adaeze Okafor', init:'AO', region:'NG', city:'Lagos', bio:'Built a payments company used across West Africa. Grants school fees first, always.'},
+  {id:'rafael', name:'Rafael Monteiro', init:'RM', region:'BR', city:'São Paulo', bio:'Coffee exporter. Prefers medical bills and anyone with a GitHub.'},
+];
+
+const fmtCache = {};
+const SHARED_SYMBOL = {'$':'USD', '¥':'JPY', 'kr':'', 'R':''};
+const digitCache = {};
+const digits = c => digitCache[c] ??= new Intl.NumberFormat('en', {style:'currency', currency:COUNTRIES[c].cur}).resolvedOptions().maximumFractionDigits;
+function money(v, region, dp = digits(region)){
+  const k = region + dp, r = COUNTRIES[region];
+  if (!fmtCache[k]){
+    const opts = {style:'currency', currency:r.cur, minimumFractionDigits:dp, maximumFractionDigits:dp};
+    let f = new Intl.NumberFormat(r.locale, opts);
+    // Shared symbols ($, ¥, kr, R) are ambiguous across borders, so only their home currency keeps them; others show the code.
+    const sym = f.formatToParts(1).find(x=>x.type==='currency')?.value;
+    if (SHARED_SYMBOL[sym] !== undefined && SHARED_SYMBOL[sym] !== r.cur) f = new Intl.NumberFormat(r.locale, {...opts, currencyDisplay:'code'});
+    fmtCache[k] = f;
+  }
+  return fmtCache[k].format(v);
+}
+const rateFmt = new Intl.NumberFormat('en', {maximumSignificantDigits:5});
+const convert = (v, from, to) => v * COUNTRIES[from].usd / COUNTRIES[to].usd;
+const round2 = v => Math.round(v * 100) / 100;
+const maxFor = region => Math.floor(convert(pack(region)==='GEN' ? RULES.genCapUsd : RULES.maxBillUsd, 'US', region));
+
+// India charges GST on the value of a currency conversion, which is set by slab on the rupee amount.
+function gstConversionValue(inr){
+  if (inr <= 1e5) return Math.max(250, inr * 0.01);
+  if (inr <= 1e6) return 1000 + (inr - 1e5) * 0.005;
+  return Math.min(60000, 5500 + (inr - 1e6) * 0.001);
+}
+function fyStart(d = new Date()){ const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; return new Date(y, 3, 1).getTime(); }
+function yearStart(d = new Date()){ return new Date(d.getFullYear(), 0, 1).getTime(); }
+const taxYearStart = region => region === 'IN' ? fyStart() : yearStart();
+
+/* ---------- Dates and ids ---------- */
+const newId = () => 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const newRef = () => 'BN-' + Date.now().toString(36).toUpperCase().slice(-6) + '-' + Math.random().toString(36).slice(2, 5).toUpperCase();
+function localISO(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function daysFromNow(n){ const d = new Date(); d.setDate(d.getDate()+n); return localISO(d); }
+function validDate(s){ if (typeof s!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false; const d = new Date(s+'T00:00'); return !isNaN(d) && localISO(d)===s; }
+function dueLabel(due){
+  if (!validDate(due)) return {t:'No due date', soon:false};
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = Math.round((new Date(due+'T00:00') - today) / 864e5);
+  if (days < 0) return {t:`Overdue ${-days}d`, soon:true};
+  if (days === 0) return {t:'Due today', soon:true};
+  return {t:`Due in ${days}d`, soon:days<=3};
+}
+// Show only the last four letters or digits of an account number, ignoring spaces and separators.
+const mask = s => { const t = String(s || '').replace(/[\s.\/-]/g, ''); return t.length > 4 ? '•••• ' + t.slice(-4) : t; };
+
+/* ---------- State ---------- */
+function seed(){
+  const li = h => 'https://www.linkedin.com/in/' + h;
+  const ex = [
+    ['IN','UTIL','Kaveri Power Distribution',2840,5,'KPD 4122 9077 13','Three-hour power cut and the bill still went up.',
+      'Lakshmi Iyer','Chennai',{now:'Staff nurse on night shifts at a district hospital', about:'Two kids, one very old ceiling fan, and a lot of night shifts.', links:{linkedin:li('lakshmi-iyer-sample')}}],
+    ['IN','EDU','Sunrise Public School, Term 2 fees',38500,10,'SPS-2026-0417','My daughter wants to be an astronaut. Term 2 is the step before that.',
+      'Farah Khan','Hyderabad',null],
+    ['IN','MED','Lotus Multispeciality Hospital',64200,7,'LMH-IP-88213',"Dad's knee surgery went well. The invoice did not.",
+      'Suresh Pillai','Kochi',{now:'Retired maths teacher and full-time carer', about:'Taught maths for 31 years. Now I mostly teach my father to trust his new knee.', links:{}}],
+    ['IN','LOAN','Two-wheeler loan EMI',4350,3,'TWL 0099 3381','The scooter gets me to work. Work does not quite pay for the scooter.',
+      'Deepak Rawat','Dehradun',null],
+    ['IN','NET','AirLink Fibre 300 Mbps',1179,14,'AL 77 1203 4456','I work from home. Without this I work from a café and buy too much chai.',
+      'Nisha Menon','Pune',{now:'Freelance UX designer', about:'I design booking apps for clinics. Clients pay in 60 days; the internet bill does not wait.', links:{linkedin:li('nisha-menon-sample'), web:'https://nishamenon.example'}}],
+    ['US','UTIL','Con-Volt Energy',142.18,6,'CV-55120-8','It got cold. I turned the heat on once. That was a mistake.',
+      'Jordan Ellis','Columbus',{now:'Junior backend developer, first job after a bootcamp', about:'Writes Go by day. Learning Rust by night, badly.', links:{github:'https://github.com/jordan-ellis-sample', linkedin:li('jordan-ellis-sample')}}],
+    ['US','PET','Cedar Hill Animal Clinic',476.5,9,'CHC-20931','My cat Biscuit ate a hair tie. Biscuit is fine. My account is not.',
+      'Casey Morgan','Portland',null],
+    ['DE','UTIL','Stadtwerke Nordheim, electricity',96.4,11,'SN 4410 2287','Winter in Germany. The radiator and I have become close.',
+      'Lena Fischer','Leipzig',{now:'PhD student in materials science', about:'Building better battery electrodes on a stipend that does not cover winter.', links:{linkedin:li('lena-fischer-sample'), web:'https://lenafischer.example'}}],
+    ['GB','UTIL','Thames Ridge Water',54.2,8,'TRW 0081 2291','It rains nine months a year and I still pay for water.',
+      'Tom Barker','Reading',{now:'Second-year apprentice electrician', about:"I fix other people's wiring for a living. Mine is fine. The water bill is not.", links:{linkedin:li('tom-barker-sample')}}],
+    ['NG','EDU','Lekki Heights School, first term fees',450000,9,'LHS-2026-1188','My twins start secondary school this term. Two of everything, including fees.',
+      'Chinedu Eze','Lagos',{now:'Civil engineer, site supervisor on a housing project', about:'Builds houses, pays school fees, sleeps occasionally.', links:{linkedin:li('chinedu-eze-sample')}}],
+    ['KE','UTIL','Rift Valley Power & Light',6200,4,'RVP 0412 7755 90','The prepaid tokens ran out in exam season. The kids study at night.',
+      'Wanjiru Kamau','Nakuru',{now:'Primary school teacher, Class 6 maths and science', about:'Spends the day teaching other people\'s kids and the evening helping her own.', links:{linkedin:li('wanjiru-kamau-sample')}}],
+    ['PH','MED','Cebu Bayside Medical Center',18500,10,'CBMC-OP-55219',"Mum's follow-up scans. She's fine. The bill, less so.",
+      'Maria Santos','Cebu City',{now:'Team lead at a customer support centre', about:'Night shift, eight agents, and one mother with follow-up scans.', links:{linkedin:li('maria-santos-sample')}}],
+    ['BR','NET','VivaNet Fibra 500 Mega',129.9,6,'VN 3381 2290','I teach online. No internet, no classes, no salary.',
+      'Lucas Almeida','Campinas',{now:'Online English teacher', about:'Forty students a week across Brazil, all of them over video.', links:{github:'https://github.com/lucas-almeida-sample', web:'https://lucasalmeida.example'}}],
+  ];
+  const bills = ex.map(([region,cat,payee,amount,d,account,pitch,ownerName,city,prof],i)=>({id:'ex'+i, region, cat, payee, amount, due:daysFromNow(d), account, pitch,
+    photo:null, fcraOk:true, example:true, status:'open', verified:true, failNote:'', ownerName, city, pepDeclared:false, consent:true,
+    profile:prof ? {show:true, now:prof.now, about:prof.about, links:prof.links} : {show:false},
+    screen:{result:'clear', reason:''}, payment:null, passedBy:[], savedBy:[]}));
+  // One held example so the compliance queue has something to review.
+  bills.push({id:'exheld', region:'IN', cat:'EDU', payee:'Greenfield International School', amount:185000, due:daysFromNow(12), account:'GIS-ADM-55102',
+    pitch:'Annual fees. It is a lot for one year.', photo:null, fcraOk:true, example:true, status:'held', verified:false, failNote:'',
+    ownerName:'Ravi Deshmukh', city:'Nagpur', pepDeclared:false, consent:true, profile:{show:false},
+    screen:{result:'held', reason:'Possible match: Deputy Commissioner of Income Tax (sample list)'}, payment:null, passedBy:[], savedBy:[]});
+  return {mode:'rich', persona:'meera', filter:'all', prefs:{}, bills};
+}
+
+// Anything read back from storage is untrusted: rebuild it field by field before it reaches the page.
+const str = (v, n) => typeof v === 'string' ? v.trim().slice(0, n) : '';
+const txt = (v, n) => { const s = str(v, n); return CONTACT_RE.test(s) ? '' : s; };
+const fin = v => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+const patronIds = a => Array.isArray(a) ? [...new Set(a.filter(id=>PATRONS.some(r=>r.id===id)))] : [];
+function cleanPayment(p, bill){
+  if (!p || typeof p!=='object' || !PATRONS.some(b=>b.id===p.ben)) return null;
+  const ben = PATRONS.find(b=>b.id===p.ben);
+  if (!fin(p.base) || !fin(p.total) || !fin(p.paidAt)) return null;
+  return { ben:ben.id, from:ben.region, to:bill.region, cross:ben.region!==bill.region, base:p.base, total:p.total,
+    tcs:fin(p.tcs) ? p.tcs : 0, related:p.related===true, gupt:p.gupt===true, paidAt:p.paidAt,
+    rail:str(p.rail, 120), ref:/^(S[LG]|BN)-[A-Z0-9-]{4,20}$/.test(p.ref) ? p.ref : 'BN-UNKNOWN',
+    docs:Array.isArray(p.docs) ? p.docs.slice(0,6).map(d=>str(d, 80)).filter(Boolean) : [] };
+}
+function cleanProfile(p){
+  p = p && typeof p==='object' ? p : {};
+  const L = p.links && typeof p.links==='object' ? p.links : {};
+  const prof = {show:p.show===true, now:txt(p.now, 70), about:txt(p.about, 200),
+    links:Object.fromEntries(LINK_KINDS.map(([k])=>[k, cleanLink(k, L[k]) || '']))};
+  if (!prof.now) prof.show = false;
+  return prof;
+}
+function cleanBill(b){
+  if (!b || typeof b!=='object') return null;
+  const region = b.region==='EU' ? 'DE' : b.region; // the old single "Eurozone" option became Germany
+  if (!COUNTRIES[region]) return null;
+  const payee = str(b.payee, 48), amount = Number(b.amount);
+  if (!payee || !Number.isFinite(amount) || amount<=0 || amount>maxFor(region)) return null;
+  const bill = {
+    id: typeof b.id==='string' && /^[\w-]{1,40}$/.test(b.id) ? b.id : newId(),
+    region, payee, amount:round2(amount),
+    cat: CATS[b.cat] ? b.cat : 'MISC',
+    due: validDate(b.due) ? b.due : null,
+    account: /^[\w .\/-]{0,30}$/.test(b.account || '') ? str(b.account, 30) : '',
+    pitch: txt(b.pitch, 160),
+    photo: typeof b.photo==='string' && PHOTO_RE.test(b.photo) ? b.photo : null,
+    fcraOk: b.fcraOk===true, example: b.example===true,
+    passedBy: patronIds(b.passedBy), savedBy: patronIds(b.savedBy),
+    city: txt(b.city, 40), profile: cleanProfile(b.profile),
+    consent: b.consent!==false, // bills saved before consent was asked were accepted under the earlier terms
+  };
+  bill.ownerName = str(b.ownerName, 60);
+  bill.pepDeclared = b.pepDeclared===true;
+  const sr = b.screen && SCREEN_RESULTS.includes(b.screen.result) ? b.screen.result : null;
+  bill.screen = sr ? {result:sr, reason:str(b.screen.reason, 120)} : null;
+  bill.verified = b.verified===true && (sr==='clear' || sr==='cleared');
+  bill.failNote = b.status==='failed' ? (str(b.failNote, 120) || "The biller couldn't confirm this bill.") : '';
+  bill.payment = b.status==='paid' && bill.verified ? cleanPayment(b.payment, bill) : null;
+  bill.thanks = bill.payment ? txt(b.thanks, 140) : '';
+  // A bill reaches the deck only after screening and the biller check. A held bill waits for compliance; anything unclear is checked again.
+  bill.status = bill.payment ? 'paid' : bill.failNote ? 'failed' : sr==='held' ? 'held' : bill.verified ? 'open' : 'checking';
+  return bill;
+}
+function cleanPrefs(p){
+  const out = {};
+  if (p && typeof p==='object') PATRONS.forEach(({id})=>{ const v = p[id]; if (v && fin(v.until) && v.until > Date.now()) out[id] = {until:v.until, gupt:v.gupt===true}; });
+  return out;
+}
+function load(){
+  let s; try { s = JSON.parse([KEY, ...OLD_KEYS].map(k=>localStorage.getItem(k)).find(v=>v!=null) ?? 'null'); } catch(e){ return null; }
+  if (!s || typeof s!=='object' || !Array.isArray(s.bills)) return null;
+  const seen = new Set();
+  const bills = s.bills.map(cleanBill).filter(b=>b && !seen.has(b.id) && seen.add(b.id));
+  return { mode: ['bills','compliance'].includes(s.mode) ? s.mode : 'rich', persona: PATRONS.some(r=>r.id===s.persona) ? s.persona : PATRONS[0].id,
+    filter: FILTERS.some(f=>f.id===s.filter) ? s.filter : 'all', prefs: cleanPrefs(s.prefs), bills };
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); return true; } catch(e){ return false; } }
+
+const FILTERS = [
+  {id:'all', label:'All', test:()=>true},
+  {id:'saved', label:'Saved'},
+  {id:'soon', label:'Due soon', test:b=>dueLabel(b.due).soon},
+  {id:'small', label:'Under US$100', test:b=>convert(b.amount, b.region, 'US') <= 100},
+  {id:'linked', label:'Linked profiles', test:b=>b.profile.show && Object.values(b.profile.links).some(Boolean)},
+  {id:'EDU', label:'Education', test:b=>b.cat==='EDU'},
+  {id:'MED', label:'Medical', test:b=>b.cat==='MED'},
+  {id:'UTIL', label:'Utilities', test:b=>b.cat==='UTIL'},
+];
+let state = load() || seed();
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const persona = () => PATRONS.find(r=>r.id===state.persona) || PATRONS[0];
+const benById = id => PATRONS.find(r=>r.id===id);
+let busy = false;
+
+/* ---------- Totals the rules depend on ---------- */
+const paidBills = () => state.bills.filter(b=>b.status==='paid' && b.payment);
+// Gift limits apply per person, so recipient totals are grouped by the bill owner's name.
+const ownerKey = b => nameTokens(b.ownerName).join(' ');
+// What a patron has given in their own currency since a date, to everyone or to one bill owner.
+const givenBy = (benId, since) => paidBills().filter(b=>b.payment.ben===benId && b.payment.paidAt>=since).reduce((s,b)=>s+b.payment.base,0);
+const givenTo = (benId, key, since) => paidBills().filter(b=>b.payment.ben===benId && ownerKey(b)===key && b.payment.paidAt>=since).reduce((s,b)=>s+b.payment.base,0);
+const sentAbroadInr = benId => paidBills().filter(b=>b.payment.ben===benId && b.payment.from==='IN' && b.payment.cross && b.payment.paidAt>=fyStart()).reduce((s,b)=>s+b.payment.base,0);
+const inGiftsReceived = key => paidBills().filter(b=>ownerKey(b)===key && b.region==='IN' && !b.payment.related && b.payment.paidAt>=fyStart()).reduce((s,b)=>s+b.amount,0);
+const usForeignReceived = key => paidBills().filter(b=>ownerKey(b)===key && b.region==='US' && b.payment.cross && b.payment.paidAt>=yearStart()).reduce((s,b)=>s+b.amount,0);
+// Distinct bill owners with a granted bill in a region, as [key, name].
+const paidOwners = region => [...new Map(paidBills().filter(b=>b.region===region && ownerKey(b)).map(b=>[ownerKey(b), b.ownerName])).entries()];
+
+// Standing grows with boons granted. It is recognition only: nothing to redeem, no effect on fees or checks.
+const TIERS = [{min:0, name:'Patron'}, {min:3, name:'Grand Patron'}, {min:10, name:'Sovereign Patron'}];
+const favoursBy = id => paidBills().filter(b=>b.payment.ben===id).length;
+function standing(id){
+  const n = favoursBy(id);
+  let i = TIERS.length - 1; while (TIERS[i].min > n) i--;
+  return {n, tier:TIERS[i], next:TIERS[i+1] || null};
+}
+
+/* ---------- The payment route: fees, taxes and checks for one bill ---------- */
+function quote(bill, ben, related){
+  const from = ben.region, to = bill.region, cross = from !== to;
+  const fx = COUNTRIES[from].cur !== COUNTRIES[to].cur;
+  const base = round2(convert(bill.amount, to, from));
+  const lines = [{label:fx ? `Bill, ${money(bill.amount, to)} at the sample rate` : 'Bill amount', v:base}];
+  if (fx) lines.push({label:'Currency conversion margin (0.5%)', short:'FX 0.5%', v:base*RULES.fxMargin});
+  lines.push({label:'Service fee (1.5%, including GST or VAT)', short:'fee 1.5%', v:base*RULES.serviceFee});
+  if (cross && (from==='IN' || to==='IN')){
+    const inr = to==='IN' ? bill.amount : base;
+    const value = gstConversionValue(inr);
+    lines.push({label:`GST on currency conversion in India (18% of ${money(value,'IN',0)})`, short:'GST', v:convert(value*0.18,'IN',from)});
+  }
+  let tcs = 0, blocked = null, lrsUsed = 0;
+  if (cross && from==='IN'){
+    const used = sentAbroadInr(ben.id);
+    tcs = RULES.tcsRate * (Math.max(0, used + base - RULES.tcsFree) - Math.max(0, used - RULES.tcsFree));
+    if (tcs > 0) lines.push({label:'TCS, 20% on gifts sent abroad above ₹10 lakh this financial year (you get it back as a tax credit)', short:'TCS', v:tcs});
+    lrsUsed = convert(used, 'IN', 'US');
+    if (lrsUsed + convert(base,'IN','US') > RULES.lrsUsd) blocked = 'This would take you past the $250,000 a year you can send abroad from India under the Liberalised Remittance Scheme.';
+  }
+  const general = [...new Set([from, to].filter(c=>pack(c)==='GEN'))].map(c=>COUNTRIES[c].name);
+  if (general.length && convert(base, from, 'US') > RULES.genCapUsd)
+    blocked = `Payments that involve ${general.join(' or ')} are capped at US$2,000 each until Boon adds detailed tax rules there.`;
+  if (cross && !bill.fcraOk) blocked = to==='IN'
+    ? "The bill owner hasn't confirmed they can accept gifts from abroad under India's FCRA, so only patrons in India can grant this bill."
+    : `The bill owner hasn't confirmed they can accept gifts from abroad, so only patrons in ${COUNTRIES[to].name} can grant this bill.`;
+  const total = round2(lines.reduce((s,l)=>s+l.v, 0));
+
+  // A crossed tax line always gets the full review, even with instant grant on.
+  const alerts = [], key = ownerKey(bill);
+  if (tcs > 0) alerts.push('TCS applies to this gift.');
+  if (from==='US'){ const before = givenTo(ben.id, key, yearStart()); if (before <= RULES.usExclusion && before + base > RULES.usExclusion) alerts.push('This takes your gifts to this person past $19,000 this year.'); }
+  if (to==='IN' && !related){ const before = inGiftsReceived(key); if (before <= RULES.inGiftFree && before + bill.amount > RULES.inGiftFree) alerts.push('This takes the bill owner past ₹50,000 in gifts this financial year.'); }
+  if (to==='US' && cross){ const before = usForeignReceived(key); if (before <= RULES.us3520 && before + bill.amount > RULES.us3520) alerts.push('This takes the bill owner past $100,000 in gifts from abroad this year.'); }
+
+  const rail = cross && to==='IN' ? 'Bharat BillPay cross-border, through an RBI-authorised partner bank. The biller is paid in rupees.'
+    : cross && from==='IN' ? 'Outward remittance under LRS from your Indian bank (SWIFT)'
+    : !cross ? ({IN:'UPI through Bharat BillPay', US:'ACH bank transfer', GB:'Faster Payments', EU:'SEPA Instant transfer'}[pack(from)] || 'Local bank transfer through a licensed partner')
+    : pack(from)==='EU' && pack(to)==='EU' ? 'SEPA Instant transfer'
+    : `International transfer through a licensed partner, paid out locally in ${COUNTRIES[to].cur}`;
+  const purpose = cross && to==='IN' ? 'P1302, personal gifts and donations (inward)' : cross && from==='IN' ? 'S1302, personal gifts and donations (outward)' : null;
+  const mid = convert(1, from, to);
+  const rate = fx ? `1 ${COUNTRIES[from].cur} = ${rateFmt.format(mid)} ${COUNTRIES[to].cur} at the sample mid-market rate. After the 0.5% margin you effectively get ${rateFmt.format(mid / (1 + RULES.fxMargin))}.` : null;
+
+  const checks = [
+    to==='IN' ? 'Bill confirmed real and unpaid with the biller through Bharat BillPay bill fetch' : `Bill confirmed real and unpaid with ${bill.payee}`,
+    `Money goes only to ${bill.payee}, never to a person`,
+    'Identity checks (KYC) for you and the bill owner',
+    'Bill owner screened against sanctions, sanctioned regions and public official lists' + (bill.screen?.result==='cleared' ? ', with an extra review passed' : ''),
+    'Sanctions and anti-money-laundering screening for you'];
+  if (cross) checks.push("Your details and the bill owner's travel with the transfer, as international transfer rules require");
+  if (cross) checks.push(to==='IN' ? "Bill owner confirmed they're allowed to accept gifts from abroad (FCRA)" : "Bill owner confirmed they're allowed to accept gifts from abroad");
+  if (cross && FX_CONTROLS.includes(to)) checks.push(`${COUNTRIES[to].name} controls foreign exchange, so the biller is paid at the official rate through a licensed bank. It can take a few working days.`);
+  if (cross && from==='IN') checks.push('PAN verified; Form A2 and LRS declaration filed with your bank', `LRS used this financial year: ${money(lrsUsed,'US',0)} of $250,000`);
+  checks.push("Face ID confirms it's you (strong customer authentication)");
+
+  const docs = ['Payment receipt'];
+  if (to==='IN') docs.push('Bharat BillPay receipt from the biller');
+  if (cross && to==='IN') docs.push('FIRA (Foreign Inward Remittance Advice) for the bill owner');
+  if (cross && from==='IN') docs.push('Form A2 copy');
+  if (tcs > 0) docs.push('TCS certificate (Form 27D)');
+
+  return {from, to, cross, base, lines, total, tcs, blocked, alerts, rail, purpose, rate, checks, docs, general,
+    collect:licensed(from), payout:licensed(to), giver:giverNote(ben, bill, cross, base), owner:ownerNote(bill, cross, related)};
+}
+
+function giverNote(ben, bill, cross, base){
+  if (ben.region==='US'){
+    const after = givenTo(ben.id, ownerKey(bill), yearStart()) + base;
+    return after <= RULES.usExclusion
+      ? `Within the $19,000 yearly gift exclusion for one person (${money(after,'US',0)} so far), so there's nothing to file. Personal gifts aren't tax-deductible.`
+      : `Gifts to this person reach ${money(after,'US',0)} this year, above $19,000, so file IRS Form 709. Tax is rarely due because of the lifetime exemption. Personal gifts aren't tax-deductible.`;
+  }
+  if (ben.region==='IN') return cross
+    ? 'No gift tax for you in India. Any TCS your bank collects shows on Form 26AS and counts against your income tax.'
+    : 'No tax for you as the giver in India.';
+  if (ben.region==='GB') return 'No tax now. Gifts above your £3,000 yearly exemption could count for inheritance tax if you die within 7 years, so keep the receipt.';
+  if (pack(ben.region)==='EU') return 'Gift tax depends on your EU country. In most, the person receiving pays it. Keep the receipt.';
+  return `Boon doesn't have checked gift tax rules for ${COUNTRIES[ben.region].name} yet. Some countries tax or ask you to report large gifts, so check locally and keep the receipt.`;
+}
+function ownerNote(bill, cross, related){
+  if (bill.region==='IN'){
+    if (related) return "Gifts from relatives are tax-free for the bill owner in India.";
+    const after = inGiftsReceived(ownerKey(bill)) + bill.amount;
+    return after <= RULES.inGiftFree
+      ? `Tax-free for the bill owner: ${money(after,'IN',0)} of the ₹50,000 they can receive from non-relatives this financial year.`
+      : `Gifts from non-relatives reach ${money(after,'IN',0)} this financial year, above ₹50,000, so the whole amount is taxable income for the bill owner.`;
+  }
+  if (bill.region==='US') return cross
+    ? `Not income for the bill owner. Gifts from people abroad reach ${money(usForeignReceived(ownerKey(bill)) + bill.amount,'US',0)} this year; above $100,000 they go on IRS Form 3520.`
+    : "Not income for the bill owner. Any gift tax filing is the giver's job.";
+  if (bill.region==='GB') return "Gifts aren't income for the bill owner in the UK.";
+  if (pack(bill.region)==='EU') return 'Many EU countries tax the person receiving a gift above an allowance (in Germany, €20,000 from a non-relative over 10 years). The bill owner should check their country.';
+  return `Boon doesn't have checked rules for ${COUNTRIES[bill.region].name} yet. In some countries a gift counts as income or must be reported above a limit, so the bill owner should check locally.`;
+}
+
+/* ---------- How a bill owner appears to patrons ---------- */
+const hueOf = s => [...String(s)].reduce((h, c)=>(h * 31 + c.charCodeAt(0)) % 360, 7);
+const firstName = b => String(b.ownerName || '').trim().split(/\s+/)[0]?.slice(0, 24) || 'Bill owner';
+function initials(name){ const t = String(name || '').trim().split(/\s+/).filter(Boolean); return ((t[0]?.[0] || '') + (t.length > 1 ? t[t.length-1][0] : '')).toUpperCase(); }
+const face = b => b.profile.show ? {name:firstName(b), init:initials(b.ownerName), h:hueOf(ownerKey(b) || b.id)} : {name:'Private profile', init:'?', h:265};
+const shownLinks = b => b.profile.show ? LINK_KINDS.filter(([k])=>b.profile.links[k]) : [];
+const linkText = u => u.replace(/^https:\/\/(www\.)?/, '');
+
+/* ---------- Mode ---------- */
+const MODES = ['bills', 'rich', 'compliance'];
+function setMode(m){
+  if (busy) return;
+  if (!MODES.includes(m)) m = 'rich';
+  state.mode = m; save();
+  MODES.forEach(k=>{ $('mode-'+k).setAttribute('aria-pressed', m===k); $('view-'+k).hidden = m!==k; });
+  ({bills:renderBills, rich:renderRich, compliance:renderCompliance})[m]();
+}
+MODES.forEach(k=>$('mode-'+k).onclick = () => setMode(k));
+
+/* ---------- Compliance side ---------- */
+function decideHeld(id, clear){
+  const b = state.bills.find(x=>x.id===id);
+  if (!b || b.status!=='held') return;
+  if (clear){ b.screen = {result:'cleared', reason:b.screen.reason}; save(); verifyBill(b); }
+  else { b.screen = {result:'rejected', reason:b.screen.reason}; b.status = 'failed'; b.verified = false; b.failNote = REFUSED_NOTE; save(); }
+  renderCompliance();
+}
+function renderCompliance(){
+  const held = state.bills.filter(b=>b.status==='held');
+  const decided = state.bills.filter(b=>b.screen && ['cleared','rejected','blocked'].includes(b.screen.result));
+  $('cq').innerHTML = held.length ? held.map(b=>`<div class="citem">
+      <div class="ctop"><b>${esc(b.payee)}</b><span class="num">${money(b.amount, b.region)}</span></div>
+      <p>Bill owner: <b>${esc(b.ownerName)}</b>, ${esc(b.city || 'no city')} · ${b.region} · account ${esc(mask(b.account))}</p>
+      ${shownLinks(b).length ? `<p>Profile links: ${shownLinks(b).map(([k])=>esc(linkText(b.profile.links[k]))).join(', ')}</p>` : ''}
+      <p class="why">${esc(b.screen.reason)}</p>
+      <p class="hint-s">Clearing applies enhanced checks: confirm identity, the relationship to any official, that the profile matches the person, and that no patron has business before that office.</p>
+      <div class="cact"><button class="ghost" type="button" data-reject="${b.id}">Reject</button><button class="primary sm" type="button" data-clear="${b.id}">Clear with enhanced checks</button></div>
+    </div>`).join('')
+    : '<p class="note">Nothing waiting. Bills from public officials, their families, possible list matches and patron reports land here.</p>';
+  const label = {cleared:['paid','Cleared'], rejected:['fail','Rejected'], blocked:['fail','Blocked, sanctions']};
+  $('cdone').innerHTML = decided.length ? decided.map(b=>{ const [cls, t] = label[b.screen.result]; return `<div class="item" style="grid-template-columns:1fr auto">
+      <div class="t"><b>${esc(b.payee)}</b><span>${esc(b.ownerName)} · ${esc(b.screen.reason)}</span></div>
+      <div class="r"><span class="pill ${cls}">${t}</span></div></div>`; }).join('')
+    : '<div class="item" style="grid-template-columns:1fr"><span class="note">No decisions yet.</span></div>';
+  $('cq').querySelectorAll('[data-clear]').forEach(x=>x.onclick=()=>decideHeld(x.dataset.clear, true));
+  $('cq').querySelectorAll('[data-reject]').forEach(x=>x.onclick=()=>decideHeld(x.dataset.reject, false));
+}
+
+/* ---------- Patron side ---------- */
+// Bills whose owner can't take gifts from abroad only reach patrons in the same country.
+const canSettle = (b, p) => b.fcraOk || p.region===b.region;
+const currentFilter = () => FILTERS.find(f=>f.id===state.filter) || FILTERS[0];
+function deckBills(){
+  const p = persona(), f = currentFilter();
+  return state.bills.filter(b=>b.status==='open' && canSettle(b, p) && !b.passedBy.includes(p.id)
+    && (f.id==='saved' ? b.savedBy.includes(p.id) : !b.savedBy.includes(p.id) && f.test(b)));
+}
+const prefFor = p => { const pr = state.prefs[p.id]; return pr && pr.until > Date.now() ? pr : null; };
+// Instant grant: swipe right goes straight to Face ID when the patron's declarations are saved and nothing needs a fresh look.
+function expressOk(b, p){ if (!prefFor(p)) return false; const q = quote(b, p, false); return !q.blocked && !q.alerts.length; }
+
+// While any dialog is open, the page behind it can't be tabbed into or clicked.
+function syncInert(){ document.querySelector('.app').inert = ['sheet-overlay','fid-overlay','match-overlay'].some(id=>!$(id).hidden); }
+
+let toastTimer = null, lastUndo = null;
+const snap = b => ({id:b.id, passedBy:[...b.passedBy], savedBy:[...b.savedBy]});
+function showToast(text, undo){
+  lastUndo = undo || null;
+  $('toast-text').textContent = text; $('undo-btn').hidden = !undo; $('toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 6000);
+}
+function hideToast(){ $('toast').hidden = true; lastUndo = null; clearTimeout(toastTimer); }
+$('undo-btn').onclick = () => {
+  if (!lastUndo || busy) return;
+  const b = state.bills.find(x=>x.id===lastUndo.id);
+  if (b && b.status==='open'){ b.passedBy = lastUndo.passedBy; b.savedBy = lastUndo.savedBy; }
+  hideToast(); save(); renderRich();
+};
+
+const FACE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M8.5 9v1.5M15.5 9v1.5M12 9v4.2l-1 .3M9 16.2c1.8 1.4 4.2 1.4 6 0"/></svg>';
+const BOLT = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
+function renderPersona(){
+  const p = persona();
+  $('chips').innerHTML = PATRONS.map(r=>`<button class="chip" type="button" data-id="${r.id}" aria-pressed="${r.id===p.id}">${esc(r.name.split(' ')[0])} <span class="rg">${r.region}</span></button>`).join('');
+  $('chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ if (busy) return; state.persona=c.dataset.id; save(); hideToast(); renderRich(); });
+  $('av').textContent = p.init; $('pname').textContent = `${p.name}, ${p.city}`; $('pbio').textContent = p.bio;
+  $('pgiven-label').textContent = p.region==='IN' ? 'Given this financial year' : 'Given this year';
+  $('pgiven').textContent = money(givenBy(p.id, taxYearStart(p.region)), p.region);
+  const s = standing(p.id);
+  $('ptier').textContent = s.tier.name;
+  $('ptier-next').textContent = `${s.n} boon${s.n===1?'':'s'} granted${s.next ? ` · ${s.next.min - s.n} more to ${s.next.name}` : ''}`;
+  const pr = prefFor(p);
+  $('instant').hidden = !pr;
+  if (pr){
+    $('instant').innerHTML = `<span>${BOLT}<b>Instant grant is on</b> until ${new Date(pr.until).toLocaleDateString('en', {day:'numeric', month:'short'})}. Swipe right goes straight to Face ID${pr.gupt ? ', in secret' : ''}.</span><button class="x" type="button" id="instant-off">Turn off</button>`;
+    $('instant-off').onclick = () => { delete state.prefs[p.id]; save(); renderRich(); };
+  }
+  const notes = paidBills().filter(b=>b.payment.ben===p.id && b.thanks);
+  $('notes').hidden = !notes.length;
+  $('notes-sum').textContent = `Thank-you notes · ${notes.length}`;
+  $('notes-list').innerHTML = notes.map(b=>`<p>“${esc(b.thanks)}”<small>${esc(b.profile.show ? firstName(b) : 'A bill owner')}, for ${esc(b.payee)}</small></p>`).join('');
+}
+function renderFilters(){
+  const p = persona();
+  const savedN = state.bills.filter(b=>b.status==='open' && canSettle(b, p) && !b.passedBy.includes(p.id) && b.savedBy.includes(p.id)).length;
+  $('filters').innerHTML = FILTERS.map(f=>`<button class="chip" type="button" data-f="${f.id}" aria-pressed="${f.id===currentFilter().id}">${esc(f.label)}${f.id==='saved' ? ` · ${savedN}` : ''}</button>`).join('');
+  $('filters').querySelectorAll('.chip').forEach(c=>c.onclick=()=>setFilter(c.dataset.f));
+}
+function setFilter(id){ if (busy) return; state.filter = FILTERS.some(f=>f.id===id) ? id : 'all'; save(); hideToast(); renderRich(); }
+
+function billCard(b, depth, ben){
+  const d = dueLabel(b.due), f = face(b), q = quote(b, ben, false), country = COUNTRIES[b.region].name;
+  const thumb = b.photo ? `<img src="${b.photo}" alt="">` : esc(b.cat);
+  const links = shownLinks(b).map(([, l])=>`<span class="vchip link">✓ ${l}</span>`).join('');
+  const fees = q.lines.slice(1).map(l=>l.short).join(' · ');
+  const tags = [
+    expressOk(b, ben) ? `<span class="tag fast">Instant grant</span>` : '',
+    !b.fcraOk ? `<span class="tag">Local patrons only</span>` : '',
+    FX_CONTROLS.includes(b.region) && ben.region!==b.region ? `<span class="tag">Official rate</span>` : '',
+    q.general.length ? `<span class="tag">General tax guidance</span>` : '',
+    b.example ? `<span class="tag">Example</span>` : ''].join('');
+  const el = document.createElement('article');
+  el.className = 'bill' + (depth===0 ? ' top' : '');
+  el.style.transform = `translateY(${depth*12}px) scale(${1-depth*.04})`;
+  el.style.zIndex = 10-depth;
+  if (depth) el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = `
+    <div class="hero${b.profile.show ? '' : ' private'}" style="--h:${f.h}">
+      <span class="due-pill${d.soon ? ' soon' : ''}">${d.t}</span>
+      <div class="av">${esc(f.init)}</div>
+      <div class="ht"><h3>${esc(f.name)}<span class="where">${b.profile.show && b.city ? esc(b.city) + ', ' : ''}${esc(country)}</span></h3>
+        <p>${b.profile.show ? esc(b.profile.now) : 'Shares the bill, not their profile'}</p></div>
+    </div>
+    <div class="body">
+      <div class="vrow"><span class="vchip">✓ ID checked</span><span class="vchip">✓ Bill confirmed</span>${links}</div>
+      <div class="billrow"><div class="bthumb">${thumb}</div><div class="bt"><span class="label">${esc(CATS[b.cat])}</span><b>${esc(b.payee)}</b></div><div class="bamt num">${money(b.amount, b.region)}</div></div>
+      ${b.profile.show && b.profile.about ? `<p class="bio-c">${esc(b.profile.about)}</p>` : ''}
+      ${b.pitch ? `<p class="pitch">“${esc(b.pitch)}”</p>` : ''}
+      ${q.blocked ? `<div class="cost blocked"><div><span class="label">Can't grant from ${esc(COUNTRIES[ben.region].name)}</span><b>Tap for the reason</b></div></div>`
+        : `<div class="cost"><div><span class="label">You pay, all in</span><b class="num">${money(q.total, ben.region)}</b></div>
+        <div class="cost-r">${money(q.base, ben.region)} bill<br>+ ${money(q.total - q.base, ben.region)}: ${esc(fees)}</div></div>`}
+      <div class="tags">${tags}<button class="more" type="button" data-more>Profile and charges</button></div>
+    </div>
+    <span class="stamp pay">GRANT</span><span class="stamp nope">PASS</span><span class="stamp save">SAVED</span>`;
+  return el;
+}
+
+function renderBatch(bills, ben){
+  const el = $('batch');
+  el.hidden = state.filter!=='saved' || bills.length < 2;
+  if (el.hidden) return;
+  if (!prefFor(ben)){
+    el.innerHTML = `<p>To grant all your saved bills with one Face ID, grant one bill with the full review and keep "Skip this next time" ticked.</p>`;
+    return;
+  }
+  const ok = bills.filter(b=>expressOk(b, ben));
+  const total = ok.reduce((s,b)=>s+quote(b, ben, false).total, 0);
+  el.innerHTML = ok.length > 1
+    ? `<div><b>Grant all ${ok.length} at once</b><span>${money(total, ben.region)} all in, one Face ID${ok.length < bills.length ? ` · ${bills.length - ok.length} need${bills.length - ok.length === 1 ? 's' : ''} a full review first` : ''}</span></div><button class="primary sm" type="button" id="batch-go">Grant all</button>`
+    : `<p>Only one saved bill can be granted instantly. The others need a full review first.</p>`;
+  if ($('batch-go')) $('batch-go').onclick = () => faceIdPay(ok, ben, {related:false, gupt:prefFor(ben).gupt, fly:false, express:true});
+}
+
+function renderRich(){
+  renderPersona(); renderFilters();
+  const deck = $('deck'); deck.innerHTML = '';
+  const bills = deckBills(), ben = persona(), saved = state.filter==='saved';
+  ['btn-nope','btn-grant','btn-save'].forEach(id=>$(id).disabled = !bills.length);
+  $('btn-save').setAttribute('aria-label', saved ? 'Remove from saved' : 'Save for later');
+  $('btn-save').classList.toggle('on', saved);
+  renderBatch(bills, ben);
+  if (!bills.length){
+    deck.innerHTML = state.filter==='all'
+      ? `<div class="empty"><h3>All caught up.</h3><p>No bills left for ${esc(ben.name.split(' ')[0])}. Try another patron, or upload more bills.</p><button class="ghost" type="button" id="empty-go">Upload more bills</button></div>`
+      : `<div class="empty"><h3>Nothing here.</h3><p>${saved ? 'Swipe up or tap the star to save bills, then grant them together.' : 'No bills match this filter right now.'}</p><button class="ghost" type="button" id="empty-go">Show all bills</button></div>`;
+    $('empty-go').onclick = () => state.filter==='all' ? setMode('bills') : setFilter('all');
+    return;
+  }
+  bills.slice(0,3).reverse().forEach((b,i,arr)=>deck.appendChild(billCard(b, arr.length-1-i, ben)));
+  const top = deck.querySelector('.bill.top');
+  attachDrag(top);
+  top.querySelector('[data-more]').onclick = openSheet;
+}
+
+function resetTop(){
+  const el = $('deck').querySelector('.bill.top'); if (!el) return;
+  el.style.transition=''; el.style.transform=''; el.style.opacity='';
+  el.querySelectorAll('.stamp').forEach(s=>s.style.opacity=0);
+}
+function attachDrag(el){
+  let sx=0, sy=0, dx=0, dy=0, down=false;
+  const st = k => el.querySelector('.stamp.' + k);
+  el.addEventListener('pointerdown', e=>{ if (busy || e.target.closest('button, a')) return; down=true; sx=e.clientX; sy=e.clientY; dx=dy=0; el.setPointerCapture(e.pointerId); el.style.transition='none'; });
+  el.addEventListener('pointermove', e=>{
+    if (!down) return;
+    dx = e.clientX-sx; dy = e.clientY-sy;
+    const up = dy < 0 && Math.abs(dx) < 90;
+    el.style.transform = up ? `translate(${dx*.4}px,${dy}px)` : `translate(${dx}px,${dy*.4}px) rotate(${dx/16}deg)`;
+    st('pay').style.opacity = up ? 0 : Math.max(0, Math.min(1, dx/110));
+    st('nope').style.opacity = up ? 0 : Math.max(0, Math.min(1, -dx/110));
+    st('save').style.opacity = up ? Math.max(0, Math.min(1, -dy/110)) : 0;
+  });
+  const end = ()=>{
+    if (!down) return; down=false; el.style.transition='';
+    if (dy < -110 && Math.abs(dx) < 90) saveTop();
+    else if (dx > 110) { resetTop(); grant(); }
+    else if (dx < -110) pass();
+    else { resetTop(); if (Math.abs(dx) < 6 && Math.abs(dy) < 6) openSheet(); }
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', ()=>{ down=false; el.style.transition=''; resetTop(); });
+}
+
+function flyOff(dir){
+  const el = $('deck').querySelector('.bill.top'); if (!el) return;
+  el.querySelector('.stamp.' + dir).style.opacity = 1;
+  el.style.transform = dir==='save' ? 'translate(0,-130%)' : `translate(${dir==='pay'?140:-140}%, -40px) rotate(${dir==='pay'?24:-24}deg)`;
+  el.style.opacity = 0;
+}
+
+function pass(){
+  const b = deckBills()[0]; if (!b || busy) return;
+  const p = persona(), before = snap(b);
+  busy = true; flyOff('nope');
+  setTimeout(()=>{
+    busy = false;
+    if (!b.passedBy.includes(p.id)) b.passedBy.push(p.id);
+    b.savedBy = b.savedBy.filter(x=>x!==p.id);
+    save(); renderRich(); showToast(`Passed on ${b.payee}.`, before);
+  }, 320);
+}
+function saveTop(){
+  const b = deckBills()[0]; if (!b || busy) return;
+  const p = persona(), before = snap(b), wasSaved = b.savedBy.includes(p.id);
+  busy = true; flyOff(wasSaved ? 'nope' : 'save');
+  setTimeout(()=>{
+    busy = false;
+    b.savedBy = wasSaved ? b.savedBy.filter(x=>x!==p.id) : [...b.savedBy, p.id];
+    save(); renderRich(); showToast(wasSaved ? `Removed ${b.payee} from saved.` : `Saved ${b.payee}. Find it under Saved.`, before);
+  }, 320);
+}
+function grant(){
+  const b = deckBills()[0]; if (!b || busy) return;
+  const p = persona();
+  if (expressOk(b, p)) faceIdPay([b], p, {related:false, gupt:prefFor(p).gupt, fly:true, express:true});
+  else openSheet();
+}
+
+/* ---------- Full profile and charges ---------- */
+let sheet = null; // {bill, ben, related, declared, noLink, gupt, remember, reportOpen}
+const REPORT_REASONS = ["Looks fake, or doesn't match the bill", 'Asked me for contact or money outside Boon', 'Something else'];
+function openSheet(){
+  const b = deckBills()[0]; if (!b || busy) return;
+  const p = persona(), pr = prefFor(p);
+  sheet = {bill:b, ben:p, related:false, declared:!!pr, noLink:!!pr, gupt:pr ? pr.gupt : true, remember:true, reportOpen:false};
+  renderSheet(); $('sheet-overlay').hidden = false; syncInert();
+  $('sheet').scrollTop = 0; $('sh-cancel').focus();
+}
+function closeSheet(){ sheet = null; $('sheet-overlay').hidden = true; syncInert(); }
+function renderSheet(){
+  const {bill, ben, related, declared, noLink, gupt, remember, reportOpen} = sheet;
+  const q = quote(bill, ben, related), f = face(bill), d = dueLabel(bill.due);
+  const linkItems = shownLinks(bill).map(([k, l])=>{
+    const u = bill.profile.links[k];
+    const shown = bill.example ? `<span class="sample">${esc(linkText(u))} (sample)</span>`
+      : `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${esc(linkText(u))}</a>`;
+    return `<li><span>${l}: ${shown}<br><small class="hint-s">Confirmed theirs: ${LINK_PROOF[k]}</small></span></li>`;
+  }).join('');
+  $('sheet').innerHTML = `
+    <div class="hero${bill.profile.show ? '' : ' private'}" style="--h:${f.h}">
+      <div class="av">${esc(f.init)}</div>
+      <div class="ht"><h2 id="sh-title">${esc(f.name)}</h2><span class="where">${bill.profile.show && bill.city ? esc(bill.city) + ', ' : ''}${esc(COUNTRIES[bill.region].name)}</span>
+        <p>${bill.profile.show ? esc(bill.profile.now) : 'This person shares the bill, not their profile. Boon still checked who they are.'}</p></div>
+    </div>
+    ${bill.profile.show && bill.profile.about ? `<p class="about">${esc(bill.profile.about)}</p>` : ''}
+    <div class="sec"><span class="label">Verified by Boon</span><ul class="checks">
+      <li>Identity checked against an official ID (KYC)</li>
+      <li>Screened against sanctions and public official lists</li>
+      <li>Bill confirmed real and unpaid with ${esc(bill.payee)}</li>
+      ${linkItems}</ul></div>
+    <div class="sec"><span class="label">The bill</span>
+      ${bill.photo ? `<img class="sheet-photo" src="${bill.photo}" alt="Photo of the ${esc(bill.payee)} bill, with personal details blacked out">` : ''}
+      <div class="rows">
+        <div class="r"><span>${esc(bill.payee)}</span><span class="num">${money(bill.amount, bill.region)}</span></div>
+        <div class="r"><span>${esc(CATS[bill.cat])}${bill.account ? ' · account ' + esc(mask(bill.account)) : ''}</span><span>${d.t}</span></div></div>
+      ${bill.pitch ? `<p class="about">“${esc(bill.pitch)}”</p>` : ''}</div>
+    <div class="sec"><span class="label">What you pay</span>
+      <div class="rows">${q.lines.map(l=>`<div class="r"><span>${esc(l.label)}</span><span class="num">${money(l.v, ben.region)}</span></div>`).join('')}
+        <div class="r total"><span>Total</span><span class="num">${money(q.total, ben.region)}</span></div></div>
+      ${q.rate ? `<p class="fine">${esc(q.rate)}</p>` : ''}
+      <p class="fine">The biller receives exactly ${money(bill.amount, bill.region)}. No hidden markup beyond the lines above.</p></div>
+    <div class="sec"><span class="label">How it gets there</span>
+      <div class="route"><b>${esc(q.rail)}</b>${q.purpose ? `<span>Purpose code <code>${esc(q.purpose)}</code></span>` : ''}
+        <span>${q.collect===q.payout ? `Handled by ${esc(q.collect)}.` : `Collected by ${esc(q.collect)}. Paid out by ${esc(q.payout)}.`}</span></div></div>
+    <div class="sec"><span class="label">Checks before it goes</span><ul class="checks">${q.checks.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></div>
+    <div class="sec"><span class="label">Tax</span>
+      <p class="taxnote"><b>For you</b>${esc(q.giver)}</p>
+      <p class="taxnote"><b>For the bill owner</b>${esc(q.owner)}</p>
+      ${q.general.length ? `<p class="taxnote"><b>Rules coverage</b>General guidance only for ${esc(q.general.join(' and '))}, with a US$2,000 cap per payment. Detailed rules cover India, the US, the UK and the eurozone so far.</p>` : ''}</div>
+    ${q.alerts.length ? `<p class="why-full"><b>Why you're seeing the full review:</b> ${esc(q.alerts.join(' '))}</p>` : ''}
+    ${bill.region==='IN' ? `<label class="check" for="sh-related"><input type="checkbox" id="sh-related" ${related?'checked':''}><span>We're relatives<small>As defined in Indian income tax law: spouse, parents, children, siblings and their spouses, and similar close family.</small></span></label>` : ''}
+    <label class="check" for="sh-gupt"><input type="checkbox" id="sh-gupt" ${gupt?'checked':''}><span>Give in secret (Gupt Daan)<small>The bill owner only ever sees "a secret patron". Your identity stays in the legal records the bank must keep, and nowhere else.</small></span></label>
+    <label class="check" for="sh-declare"><input type="checkbox" id="sh-declare" ${declared?'checked':''}><span>This is a personal gift<small>I'm not getting anything in return, and the money is my own.</small></span></label>
+    <label class="check" for="sh-nolink"><input type="checkbox" id="sh-nolink" ${noLink?'checked':''}><span>No business link<small>I'm not paying to win a favour, contract or decision, and I have no business dealings with the bill owner or their employer.</small></span></label>
+    <label class="check" for="sh-remember"><input type="checkbox" id="sh-remember" ${remember?'checked':''}><span>Skip this next time<small>Remember these declarations for 30 days, so swipe right goes straight to Face ID. Anything that crosses a tax line still opens this review.</small></span></label>
+    ${q.blocked ? `<p class="blocked">${esc(q.blocked)}</p>` : ''}
+    <details class="report" id="sh-report" ${reportOpen?'open':''}><summary>Report this profile</summary>
+      <div class="rep"><select id="sh-rep" aria-label="Reason for the report">${REPORT_REASONS.map((r,i)=>`<option value="${i}">${esc(r)}</option>`).join('')}</select>
+        <button class="ghost" type="button" id="sh-rep-go">Send report</button></div></details>
+    <p class="fine">Sample rates and fees. Your bank or card may add its own charges.</p>
+    <div class="sheet-actions">
+      <button class="ghost" type="button" id="sh-cancel">Not now</button>
+      <button class="primary" type="button" id="sh-confirm" aria-label="Grant ${money(q.total, ben.region)} with Face ID" ${q.blocked || !declared || !noLink ? 'disabled' : ''}>${FACE_ICON}Grant ${money(q.total, ben.region)}</button>
+    </div>`;
+  $('sh-cancel').onclick = closeSheet;
+  [['sh-declare','declared'], ['sh-gupt','gupt'], ['sh-nolink','noLink'], ['sh-remember','remember'], ['sh-related','related']].forEach(([id, k])=>{
+    if ($(id)) $(id).onchange = e => { sheet[k] = e.target.checked; renderSheetKeepFocus(id); };
+  });
+  $('sh-report').ontoggle = e => { if (sheet) sheet.reportOpen = e.target.open; };
+  $('sh-rep-go').onclick = () => reportBill(REPORT_REASONS[Number($('sh-rep').value)] || REPORT_REASONS[2]);
+  $('sh-confirm').onclick = confirmSheet;
+}
+function renderSheetKeepFocus(id){ const top = $('sheet').scrollTop; renderSheet(); $('sheet').scrollTop = top; $(id)?.focus(); }
+function confirmSheet(){
+  if (!sheet || busy) return;
+  const {bill, ben, related, gupt, declared, noLink, remember} = sheet;
+  if (quote(bill, ben, related).blocked || !declared || !noLink) return;
+  if (remember) state.prefs[ben.id] = {until:Date.now() + RULES.rememberDays*864e5, gupt};
+  else delete state.prefs[ben.id];
+  save(); closeSheet();
+  faceIdPay([bill], ben, {related, gupt, fly:deckBills()[0]===bill, express:false});
+}
+// A report takes the bill out of every deck until the compliance team looks at it.
+function reportBill(reason){
+  if (!sheet) return;
+  const {bill, ben} = sheet; closeSheet();
+  if (bill.status!=='open') return;
+  bill.status = 'held'; bill.verified = false; bill.screen = {result:'held', reason:`Reported by a patron: ${reason}`};
+  if (!bill.passedBy.includes(ben.id)) bill.passedBy.push(ben.id);
+  bill.savedBy = bill.savedBy.filter(x=>x!==ben.id);
+  save(); renderRich(); showToast('Reported. The bill is out of every deck until the compliance team reviews it.');
+}
+
+/* ---------- Face ID and payment ---------- */
+function faceIdPay(bills, ben, o){
+  if (busy || !bills.length) return;
+  busy = true; hideToast();
+  const total = bills.reduce((s,b)=>s+quote(b, ben, o.related).total, 0);
+  const ov = $('fid-overlay'), box = $('faceid');
+  box.classList.remove('done');
+  $('fid-amt').textContent = money(total, ben.region);
+  $('fid-text').textContent = bills.length > 1 ? `Granting ${bills.length} boons…` : `Granting to ${bills[0].payee}…`;
+  $('fid-sub').textContent = o.express ? 'With your saved declarations' : '';
+  ov.hidden = false; syncInert();
+  setTimeout(()=>{ box.classList.add('done'); $('fid-text').textContent = `Granted by ${ben.name.split(' ')[0]}`; }, 1300);
+  setTimeout(()=>{
+    ov.hidden = true; syncInert(); if (o.fly) flyOff('pay');
+    setTimeout(()=>{ busy = false; payBills(bills, ben, o); }, o.fly ? 320 : 0);
+  }, 2000);
+}
+function payBills(bills, ben, o){
+  const before = givenBy(ben.id, taxYearStart(ben.region)), tierBefore = standing(ben.id).tier.name;
+  const paid = [];
+  bills.forEach(b=>{
+    if (b.status!=='open' || !b.verified || !canSettle(b, ben)) return;
+    const q = quote(b, ben, o.related); // recomputed at the moment of payment, after any earlier bill in the batch
+    if (q.blocked || (o.express && q.alerts.length)) return;
+    b.status = 'paid'; b.savedBy = b.savedBy.filter(x=>x!==ben.id);
+    b.payment = {ben:ben.id, from:q.from, to:q.to, cross:q.cross, base:q.base, total:q.total, tcs:round2(q.tcs), related:o.related===true, gupt:o.gupt===true,
+      paidAt:Date.now(), rail:q.rail, ref:newRef(), docs:q.docs};
+    paid.push(b);
+  });
+  save(); renderRich();
+  if (!paid.length){ showToast('Nothing was granted. Open the bill to see why.'); return; }
+  tickGiven(before, givenBy(ben.id, taxYearStart(ben.region)), ben.region);
+  showMatch(paid, ben, tierBefore, bills.length - paid.length);
+}
+
+function tickGiven(from, to, region){
+  const el = $('pgiven');
+  const t0 = performance.now(), dur = 900;
+  const step = t => { const k = Math.min(1,(t-t0)/dur); el.textContent = money(from + (to-from)*k, region); if (k<1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+function showMatch(paid, ben, tierBefore, skipped){
+  const s = standing(ben.id), promoted = s.tier.name !== tierBefore, b = paid[0], one = paid.length===1, gupt = b.payment.gupt;
+  const f = face(b);
+  $('m-av').textContent = ben.init;
+  $('m-bill').textContent = one ? f.init : '+' + paid.length;
+  $('m-bill').style.setProperty('--h', f.h);
+  $('m-title').textContent = !one ? `${paid.length} boons granted.` : gupt ? 'Granted, in secret.' : 'Boon granted.';
+  const secret = gupt ? ` ${one ? 'They' : 'Each bill owner'} will only ever see "a secret patron".` : '';
+  $('m-line').innerHTML = (one
+    ? (b.profile.show ? `<b>${esc(firstName(b))}</b>'s bill from <b>${esc(b.payee)}</b> is paid in full.` : `The <b>${esc(b.payee)}</b> bill is paid in full.`)
+    : 'Every biller is paid in full.') + esc(secret);
+  const totalPaid = paid.reduce((t,x)=>t+x.payment.total, 0);
+  $('m-facts').innerHTML = `
+    <span>Standing: <b>${esc(s.tier.name)}</b>${promoted ? ', new' : ''} · ${s.n} boon${s.n===1?'':'s'} granted</span>
+    <span>Paid: <b class="num">${money(totalPaid, ben.region)}</b>, fees and taxes included</span>
+    ${one ? `<span>Biller receives: <b class="num">${money(b.amount, b.region)}</b></span><span>Route: ${esc(b.payment.rail)}</span>` : ''}
+    <span>Reference${one ? '' : 's'}: <b class="num">${paid.map(x=>esc(x.payment.ref)).join(', ')}</b></span>
+    ${one ? `<span>Documents: ${esc(b.payment.docs.join(', '))}</span>` : ''}
+    ${skipped ? `<span>${skipped} saved bill${skipped===1?'':'s'} needed a full review and stayed in Saved.</span>` : ''}`;
+  $('match-overlay').hidden = false; syncInert(); $('m-close').focus();
+}
+function closeMatch(){ $('match-overlay').hidden = true; syncInert(); $('btn-grant').focus(); }
+$('m-close').onclick = closeMatch;
+$('btn-nope').onclick = pass;
+$('btn-grant').onclick = grant;
+$('btn-save').onclick = saveTop;
+document.addEventListener('keydown', e=>{
+  if (!$('match-overlay').hidden){ if (e.key==='Escape') closeMatch(); return; }
+  if (!$('sheet-overlay').hidden){ if (e.key==='Escape') closeSheet(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+  if (state.mode!=='rich' || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
+  const k = e.key.toLowerCase();
+  if (k==='arrowright' || k==='f'){ e.preventDefault(); grant(); }
+  else if (k==='arrowleft'){ e.preventDefault(); pass(); }
+  else if (k==='arrowup' || k==='s'){ e.preventDefault(); saveTop(); }
+  else if (k==='i'){ e.preventDefault(); openSheet(); }
+});
+$('sheet-overlay').addEventListener('click', e=>{ if (e.target===$('sheet-overlay')) closeSheet(); });
+
+/* ---------- Bill owner side ---------- */
+$('f-cat').innerHTML = Object.entries(CATS).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join('');
+// Start on the viewer's own country when Boon serves it.
+const homeCountry = (()=>{ try { const c = new Intl.Locale(navigator.language).maximize().region; return COUNTRIES[c] ? c : 'IN'; } catch(e){ return 'IN'; } })();
+$('f-region').innerHTML = Object.keys(COUNTRIES).sort((a,b)=>COUNTRIES[a].name.localeCompare(COUNTRIES[b].name))
+  .map(c=>`<option value="${c}"${c===homeCountry ? ' selected' : ''}>${esc(COUNTRIES[c].name)} (${COUNTRIES[c].cur})</option>`).join('');
+const formRegion = () => COUNTRIES[$('f-region').value] ? $('f-region').value : homeCountry;
+function syncRegion(){
+  const r = formRegion(), name = COUNTRIES[r].name;
+  $('f-amount-label').textContent = `Amount in ${COUNTRIES[r].cur}`;
+  $('f-amount').placeholder = digits(r) ? '84.20' : '8420';
+  $('fcra-text').textContent = r==='IN'
+    ? "Under India's FCRA, election candidates, journalists, judges, government servants and political party members can't. Leave this unticked and only patrons in India can grant the bill."
+    : `Some countries bar public officials, political party members or registered charities from taking gifts from abroad. Leave this unticked and only patrons in ${name} can grant the bill.`;
+  syncProfile();
+}
+function syncProfile(){
+  const show = $('f-show').checked;
+  $('profile-fields').hidden = !show;
+  $('f-law').textContent = `Boon shows patrons this bill${show ? ' and your profile' : ''}, and checks your identity against sanctions and public official lists. Your data is handled under ${lawFor(formRegion())}. You can erase it any time, except records of granted bills, which payment law makes us keep for about five years.`;
+}
+$('f-region').onchange = syncRegion;
+$('f-show').onchange = syncProfile;
+
+let pendingPhoto = null;
+function readPhoto(file){
+  return new Promise(res=>{
+    const r = new FileReader();
+    r.onload = () => { const img = new Image();
+      img.onload = () => { const s = Math.min(1, 720/Math.max(img.width,img.height)); const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width*s)); c.height = Math.max(1, Math.round(img.height*s)); c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        res(c.toDataURL('image/jpeg', .72)); };
+      img.onerror = () => res(null); img.src = r.result; };
+    r.onerror = () => res(null); r.readAsDataURL(file);
+  });
+}
+async function takePhoto(file){
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showErr('That file is not an image. Use a photo or screenshot of the bill.'); return; }
+  if (file.size > MAX_UPLOAD) { showErr('That image is over 20 MB. Use a smaller photo or a screenshot.'); return; }
+  const photo = await readPhoto(file);
+  if (!photo || !PHOTO_RE.test(photo)) { showErr("This browser couldn't open that image. Try a JPEG or PNG, or a screenshot of the bill."); return; }
+  showErr(''); pendingPhoto = photo; boxes = []; $('f-redacted').checked = false;
+  showRedactor();
+}
+$('f-photo').onchange = e => { takePhoto(e.target.files[0]); e.target.value = ''; };
+
+/* Redaction: boxes are kept as fractions of the image, then burned into the JPEG before it is saved. */
+let boxes = [];
+function showRedactor(){
+  $('redact').hidden = !pendingPhoto;
+  $('thumb').innerHTML = pendingPhoto ? `<img src="${pendingPhoto}" alt="">` : 'PHOTO';
+  if (pendingPhoto) $('redact-img').src = pendingPhoto;
+  drawBoxes();
+}
+function drawBoxes(live){
+  const stage = $('redact-stage');
+  stage.querySelectorAll('.box').forEach(b=>b.remove());
+  const all = live ? [...boxes, live] : boxes;
+  all.forEach((r, i)=>{
+    const d = document.createElement('div');
+    d.className = 'box' + (live && i===all.length-1 ? ' live' : '');
+    Object.assign(d.style, {left:r.x*100+'%', top:r.y*100+'%', width:r.w*100+'%', height:r.h*100+'%'});
+    stage.appendChild(d);
+  });
+}
+(() => {
+  const stage = $('redact-stage'); let start = null, live = null;
+  const pt = e => { const r = stage.getBoundingClientRect(); return {x:Math.min(1, Math.max(0, (e.clientX-r.left)/r.width)), y:Math.min(1, Math.max(0, (e.clientY-r.top)/r.height))}; };
+  stage.addEventListener('pointerdown', e=>{ start = pt(e); live = null; stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener('pointermove', e=>{
+    if (!start) return; const p = pt(e);
+    live = {x:Math.min(start.x,p.x), y:Math.min(start.y,p.y), w:Math.abs(p.x-start.x), h:Math.abs(p.y-start.y)};
+    drawBoxes(live);
+  });
+  const end = ()=>{ if (live && live.w > .01 && live.h > .01) boxes.push(live); start = null; live = null; drawBoxes(); };
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+})();
+$('redact-undo').onclick = () => { boxes.pop(); drawBoxes(); };
+$('redact-clear').onclick = () => { pendingPhoto = null; boxes = []; showRedactor(); };
+function bakePhoto(){
+  return new Promise(res=>{
+    if (!pendingPhoto) return res(null);
+    if (!boxes.length) return res(pendingPhoto);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0); g.fillStyle = '#000';
+      boxes.forEach(r=>g.fillRect(r.x*c.width, r.y*c.height, r.w*c.width, r.h*c.height));
+      const out = c.toDataURL('image/jpeg', .72);
+      res(PHOTO_RE.test(out) ? out : null);
+    };
+    img.onerror = () => res(null); img.src = pendingPhoto;
+  });
+}
+
+/* Biller check. Simulated here; a real build calls Bharat BillPay bill fetch in India or the biller's own API elsewhere. */
+const normAcct = s => s.replace(/[\s.\/-]/g, '').toLowerCase();
+function billerCheck(bill){
+  const acct = normAcct(bill.account);
+  if (acct.length < 6) return "The biller couldn't find an account with that number.";
+  if (/000$/.test(acct)) return 'The biller says this bill is already paid.';
+  const dup = state.bills.some(o=>o!==bill && o.status!=='failed' && o.region===bill.region && normAcct(o.account)===acct
+    && o.payee.toLowerCase()===bill.payee.toLowerCase() && o.amount===bill.amount);
+  if (dup) return 'This bill is already uploaded.';
+  return '';
+}
+// Screening runs first; only a clear or cleared owner goes on to the biller check.
+function verifyBill(bill){
+  bill.status = 'checking';
+  setTimeout(()=>{
+    if (!state.bills.includes(bill)) return;
+    if (!bill.screen) bill.screen = screenOwner(bill);
+    const s = bill.screen.result;
+    bill.verified = false;
+    if (s==='blocked' || s==='rejected'){ bill.failNote = REFUSED_NOTE; bill.status = 'failed'; }
+    else if (s==='held'){ bill.failNote = ''; bill.status = 'held'; }
+    else {
+      bill.failNote = billerCheck(bill);
+      bill.verified = !bill.failNote;
+      bill.status = bill.verified ? 'open' : 'failed';
+    }
+    save(); rerender();
+  }, 1400);
+}
+function rerender(){
+  if (state.mode==='bills') renderBills();
+  else if (state.mode==='compliance') renderCompliance();
+  else if (!busy && $('sheet-overlay').hidden) renderRich();
+}
+const drop = $('drop');
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', ()=>drop.classList.remove('over'));
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('over'); takePhoto(e.dataTransfer.files[0]); });
+
+function showErr(msg){ $('err').textContent = msg; $('err').hidden = !msg; }
+function showNote(msg){ $('note').textContent = msg; $('note').hidden = !msg; }
+const LINK_ERR = {
+  linkedin:"That LinkedIn link doesn't look right. Use your profile address, like linkedin.com/in/your-name.",
+  github:"That GitHub link doesn't look right. Use your profile address, like github.com/your-handle.",
+  web:"That website can't be used. Use a personal or work site starting https. Messaging, payment, social and link-shortener sites aren't allowed, because patrons pay billers only."};
+let submitting = false;
+$('form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  if (submitting) return;
+  const region = formRegion();
+  const payee = $('f-payee').value.trim().slice(0,48);
+  const raw = $('f-amount').value.replace(/[^\d.]/g,'');
+  const dec = digits(region);
+  const amount = (dec ? new RegExp(`^\\d+(\\.\\d{1,${dec}})?$`) : /^\d+$/).test(raw) ? Number(raw) : NaN;
+  const due = $('f-due').value;
+  const account = $('f-account').value.trim();
+  if (!payee) return showErr('Add who the bill is from so a patron knows who they are paying.');
+  if (!(amount > 0)) return showErr(`Enter the amount due as a number${dec ? `, with up to ${dec} decimals, like 84.20` : ' with no decimals, like 8420'}.`);
+  if (amount > maxFor(region)) return showErr(`Enter an amount up to ${money(maxFor(region), region, 0)}${pack(region)==='GEN' ? `, the limit while ${COUNTRIES[region].name} has general tax guidance only` : ''}.`);
+  if (due && !validDate(due)) return showErr('Pick a real due date, or leave it empty.');
+  if (!account) return showErr('Add the consumer or account number from the bill. The biller needs it to confirm the bill is real.');
+  if (!/^[\w .\/-]{0,30}$/.test(account)) return showErr('Use only letters, numbers, spaces, dots, slashes and dashes in the account number.');
+  const ownerName = $('f-owner').value.trim().slice(0,60);
+  if (nameTokens(ownerName).length < 1) return showErr('Add your full name as it appears on your ID.');
+  const city = $('f-city').value.trim().slice(0,40);
+  if (!city) return showErr('Add your city or town. It is part of the sanctions checks.');
+  const pepEl = document.querySelector('input[name="pep"]:checked');
+  if (!pepEl) return showErr('Answer whether you or a close family member is a public official.');
+  const show = $('f-show').checked;
+  const now = $('f-now').value.trim().slice(0,70), about = $('f-about').value.trim().slice(0,200);
+  const links = {linkedin:cleanLink('linkedin', $('f-li').value), github:cleanLink('github', $('f-gh').value), web:cleanLink('web', $('f-web').value)};
+  if (show){
+    if (!now) return showErr("Add one line on what you're doing now, or untick Show a profile to stay anonymous.");
+    const bad = LINK_KINDS.find(([k])=>links[k]===null);
+    if (bad) return showErr(LINK_ERR[bad[0]]);
+  }
+  const pitch = $('f-pitch').value.trim().slice(0,160);
+  if ([pitch, payee, city, show ? now : '', show ? about : ''].some(t=>CONTACT_RE.test(t)))
+    return showErr('Leave out phone numbers, emails, links and UPI IDs in your text. Add links only in the profile link fields.');
+  if (pendingPhoto && !$('f-redacted').checked) return showErr('Black out your name, address and anything personal on the photo, then tick the box to confirm. Or remove the photo.');
+  if (!$('f-consent').checked) return showErr('Tick the consent box so Boon can run the checks and show your bill to patrons.');
+  const key = nameTokens(ownerName).join(' ');
+  if (state.bills.filter(b=>ownerKey(b)===key && ['checking','open','held'].includes(b.status)).length >= MAX_WAITING)
+    return showErr(`You already have ${MAX_WAITING} bills waiting. Once one is granted or removed, you can add another.`);
+  showErr(''); showNote('');
+  submitting = true;
+  const photo = await bakePhoto();
+  submitting = false;
+  const bill = {id:newId(), region, payee, cat:CATS[$('f-cat').value] ? $('f-cat').value : 'MISC', amount:round2(amount),
+    due:due || null, account, pitch, photo, city,
+    fcraOk:$('f-fcra').checked, example:false, status:'checking', verified:false, failNote:'', consent:true,
+    profile:{show, now:show ? now : '', about:show ? about : '', links:show ? {linkedin:links.linkedin || '', github:links.github || '', web:links.web || ''} : {}},
+    ownerName, pepDeclared:pepEl.value==='yes', screen:null, payment:null, passedBy:[], savedBy:[]};
+  state.bills.unshift(bill);
+  verifyBill(bill);
+  if (!save()){
+    const hadPhoto = !!bill.photo; bill.photo = null;
+    const ok = save();
+    showNote(ok && hadPhoto ? "Saved without the photo because this browser's storage is full. Remove some bills with photos to make room."
+      : ok ? '' : "This browser isn't saving data, so these bills will be gone when you close the page.");
+  } else showNote("Checking your bill now. It joins the patrons' decks once the checks pass.");
+  e.target.reset(); pendingPhoto = null; boxes = []; showRedactor(); syncRegion();
+  renderBills();
+});
+let resetTimer = null;
+$('reset').onclick = () => {
+  const btn = $('reset');
+  if (!resetTimer){
+    btn.textContent = 'Tap again to erase all';
+    resetTimer = setTimeout(()=>{ resetTimer = null; btn.textContent = 'Erase and restore examples'; }, 4000);
+    return;
+  }
+  clearTimeout(resetTimer); resetTimer = null; btn.textContent = 'Erase and restore examples';
+  const mode = state.mode; state = seed(); state.mode = mode; save(); showNote(''); renderBills();
+};
+
+function renderTaxWatch(){
+  const rows = [];
+  paidOwners('IN').forEach(([key, name])=>{
+    const got = inGiftsReceived(key), over = got > RULES.inGiftFree;
+    rows.push({warn:over, title:`India · ${name}`, value:`${money(got,'IN',0)} of ₹50,000`,
+      note: over ? 'Over the limit for this financial year (April to March), so the whole amount is taxable. Declare it as income from other sources when you file your return. Keep the FIRA for gifts from abroad.'
+                 : 'Tax-free up to ₹50,000 in a financial year (April to March). Gifts from relatives never count.'});
+  });
+  if (!paidOwners('IN').length && state.bills.some(b=>b.region==='IN'))
+    rows.push({warn:false, title:'India', value:'', note:'Gifts from non-relatives are tax-free up to ₹50,000 a financial year. Your running total appears here once a bill is granted.'});
+  paidOwners('US').forEach(([key, name])=>{
+    const got = usForeignReceived(key), over = got > RULES.us3520;
+    rows.push({warn:over, title:`US · ${name}, gifts from abroad`, value:`${money(got,'US',0)} of $100,000`,
+      note: over ? 'Report these on IRS Form 3520. They are still not income.' : "Gifts aren't income in the US. Above $100,000 from people abroad in a year, you report them on Form 3520."});
+  });
+  if (state.bills.some(b=>pack(b.region)==='EU'))
+    rows.push({warn:false, title:'Eurozone', value:'', note:"Many EU countries tax the person receiving a gift above an allowance. Check your country's rules."});
+  if (state.bills.some(b=>b.region==='GB'))
+    rows.push({warn:false, title:'United Kingdom', value:'', note:"Gifts aren't income for you in the UK."});
+  const general = [...new Set(state.bills.filter(b=>pack(b.region)==='GEN').map(b=>COUNTRIES[b.region].name))];
+  if (general.length) rows.push({warn:false, title:general.join(', '), value:'',
+    note:'Boon gives general guidance here so far, and caps each bill at US$2,000. Check whether receiving a gift counts as income, or needs reporting, where you live.'});
+  $('taxwatch').hidden = !rows.length;
+  $('taxwatch').innerHTML = `<h2>Tax watch</h2>` + rows.map(r=>`<div class="tw ${r.warn?'warn':''}"><div class="tw-head"><b>${esc(r.title)}</b><span class="num">${esc(r.value)}</span></div><p>${esc(r.note)}</p></div>`).join('');
+}
+function renderDataCard(){
+  $('datacard').innerHTML = `<h2>Your data</h2>
+    <p>In this prototype, everything stays in this browser. In the real app, your data is handled under ${esc(lawFor(homeCountry))}. Patrons see only the bill and the profile you chose to show. Payment partners and regulators get what the law requires, and nothing more.</p>
+    <p>You can remove a waiting bill any time. Granted bills stay as payment records for the period the law sets, about five years in most countries.</p>`;
+}
+
+let thanksOpen = null, thanksErr = '';
+function renderBills(){
+  const paid = state.bills.filter(b=>b.status==='paid');
+  $('s-covered').textContent = `${paid.length} of ${state.bills.length}`;
+  $('s-waiting').textContent = `${state.bills.length - paid.length}`;
+  renderTaxWatch(); renderDataCard();
+  $('items').innerHTML = state.bills.length ? state.bills.map(b=>{
+    const d = dueLabel(b.due);
+    const status = b.status==='paid'
+      ? `<span class="pill paid">${b.payment.gupt ? 'Granted by a secret patron' : `Granted by ${esc((benById(b.payment.ben)?.name || 'a patron').split(' ')[0])}`}</span>`
+      : b.status==='checking' ? '<span class="pill check">Checking…</span>'
+      : b.status==='held' ? '<span class="pill check">Under review</span>'
+      : b.status==='failed' ? `<span class="pill fail">${b.failNote===REFUSED_NOTE ? 'Not accepted' : 'Not verified'}</span>`
+      : allPassed(b) ? '<span class="pill check">Passed by every patron</span>'
+      : `<span class="pill open">${b.passedBy.length ? `Passed by ${b.passedBy.length}, still in the deck` : 'In the deck'}</span>`;
+    const sub = b.status==='paid' ? 'Ref ' + esc(b.payment.ref) : b.status==='failed' ? esc(b.failNote)
+      : b.status==='held' ? 'Extra review before it reaches the deck' : d.t;
+    // Granted bills stay: payment records must be kept for the legal retention period.
+    const actions = b.status==='paid' ? (b.thanks ? '<span class="hint-s">Thanks sent</span>' : `<button class="x" type="button" data-thanks="${b.id}">Say thanks</button>`)
+      : [b.status==='open' && allPassed(b) ? `<button class="x" type="button" data-relist="${b.id}">Put back in the deck</button>` : '',
+         b.status==='failed' && b.failNote!==REFUSED_NOTE ? `<button class="x" type="button" data-retry="${b.id}">Fix and resubmit</button>` : '',
+         b.status!=='checking' ? `<button class="x" type="button" data-del="${b.id}">Remove</button>` : ''].join('');
+    const extra = b.status==='paid' && thanksOpen===b.id && !b.thanks
+      ? `<div class="wide"><input id="th-in" maxlength="140" aria-label="Your thank-you note" placeholder="A line for your patron. No contact details."><button class="primary sm" type="button" id="th-send">Send</button></div>${thanksErr ? `<p class="said err" role="alert">${esc(thanksErr)}</p>` : ''}`
+      : b.thanks ? `<p class="said">You said: “${esc(b.thanks)}”</p>` : '';
+    return `<div class="item">
+      <div class="badge">${b.photo ? `<img src="${b.photo}" alt="">` : esc(b.cat)}</div>
+      <div class="t"><b>${esc(b.payee)}</b><span>${b.region} · ${sub}${b.example?' · example':''}</span></div>
+      <div class="r"><span class="num">${money(b.amount, b.region)}</span>${status}${actions}</div>${extra}
+    </div>`;
+  }).join('') : `<div class="item" style="grid-template-columns:1fr"><span style="color:var(--muted)">No bills yet. Upload one above and it goes into the patrons' decks once checked.</span></div>`;
+  $('items').querySelectorAll('[data-del]').forEach(x=>x.onclick=()=>{
+    if (x.dataset.armed){ state.bills = state.bills.filter(b=>b.id!==x.dataset.del || b.status==='paid'); save(); renderBills(); return; }
+    x.dataset.armed = '1'; x.textContent = 'Tap again to remove';
+    setTimeout(()=>{ if (x.isConnected){ delete x.dataset.armed; x.textContent = 'Remove'; } }, 4000);
+  });
+  $('items').querySelectorAll('[data-relist]').forEach(x=>x.onclick=()=>{
+    const b = state.bills.find(y=>y.id===x.dataset.relist); if (!b) return;
+    b.passedBy = []; save(); renderBills();
+  });
+  $('items').querySelectorAll('[data-retry]').forEach(x=>x.onclick=()=>retryBill(x.dataset.retry));
+  $('items').querySelectorAll('[data-thanks]').forEach(x=>x.onclick=()=>{ thanksOpen = x.dataset.thanks; thanksErr = ''; renderBills(); $('th-in')?.focus(); });
+  if ($('th-send')) $('th-send').onclick = sendThanks;
+  if ($('th-in')) $('th-in').onkeydown = e => { if (e.key==='Enter'){ e.preventDefault(); sendThanks(); } };
+}
+// One short, one-way note per granted bill. It can't carry contact details, so the two sides still never meet off Boon.
+function sendThanks(){
+  const b = state.bills.find(x=>x.id===thanksOpen);
+  const t = $('th-in').value.trim().slice(0, 140);
+  if (!b || b.status!=='paid' || !t) return;
+  if (CONTACT_RE.test(t)){ thanksErr = 'Leave out phone numbers, emails, links and UPI IDs.'; renderBills(); $('th-in').value = t; $('th-in').focus(); return; }
+  b.thanks = t; thanksOpen = null; thanksErr = ''; save(); renderBills();
+}
+// A bill counts as passed by everyone once every patron who could grant it has passed.
+function allPassed(b){ const eligible = PATRONS.filter(p=>canSettle(b, p)); return eligible.length > 0 && eligible.every(p=>b.passedBy.includes(p.id)); }
+// Load a bill the biller couldn't confirm back into the form, so the owner can correct it.
+function retryBill(id){
+  const b = state.bills.find(x=>x.id===id);
+  if (!b || b.status!=='failed' || b.failNote===REFUSED_NOTE) return;
+  $('f-region').value = b.region;
+  $('f-cat').value = b.cat; $('f-payee').value = b.payee; $('f-amount').value = String(b.amount);
+  $('f-due').value = b.due || ''; $('f-account').value = b.account; $('f-owner').value = b.ownerName; $('f-city').value = b.city;
+  $('f-pitch').value = b.pitch; $('f-fcra').checked = b.fcraOk; $('f-consent').checked = false;
+  $('f-show').checked = b.profile.show; $('f-now').value = b.profile.now; $('f-about').value = b.profile.about;
+  $('f-li').value = b.profile.links.linkedin || ''; $('f-gh').value = b.profile.links.github || ''; $('f-web').value = b.profile.links.web || '';
+  $(b.pepDeclared ? 'f-pep-yes' : 'f-pep-no').checked = true;
+  syncRegion();
+  pendingPhoto = b.photo; boxes = []; $('f-redacted').checked = !!b.photo; showRedactor();
+  state.bills = state.bills.filter(x=>x.id!==id); save(); renderBills();
+  showErr(''); showNote(`Fix the details below, tick the consent box again, and resubmit. The biller said: ${b.failNote}`);
+  $('form').scrollIntoView({behavior:'smooth', block:'start'}); $('f-account').focus({preventScroll:true});
+}
+
+syncRegion();
+state.bills.filter(b=>b.status==='checking').forEach(verifyBill);
+setMode(state.mode);
+</script>
+</body>
+</html>
