@@ -14,6 +14,7 @@ Boon is a product prototype. People upload a real bill (electricity, school fees
 
 | Role | What to do |
 | --- | --- |
+| Anyone | Tap **Watch someone pay** for a 15-second demo with sound: the swipe, Face ID, the paid chime, confetti, and the bill owner's notification. Your own data is untouched. |
 | Patron | Swipe right to grant, left to pass, up to save. Tap a card for the full profile and every charge. Turn on instant grant to skip the review for 30 days. |
 | Bill owner | Upload a bill, add an optional profile (what you do now, LinkedIn, GitHub, a website), and send a thank-you note after a grant. |
 | Compliance | See bills held by screening or reported by patrons, and release or reject them. |
@@ -25,6 +26,7 @@ Keyboard: `←` pass, `→` grant, `↑` save, `I` open the profile.
 - **Swipe deck with profiles.** Each card shows the bill, the person's city, what they do now, and links patrons can check. Profiles are on by default; any bill owner can switch them off.
 - **Every charge upfront.** The card shows the all-in price. The profile sheet breaks it into bill, FX margin, service fee and local tax, plus the exact amount the biller receives and which licensed partner collects and pays out.
 - **Verified links.** LinkedIn, GitHub and personal sites are validated (https only, no shorteners, no payment or messaging links) and labelled with how ownership is proven.
+- **Feels like a moment.** Synthesized sounds (no audio files) for swipe, Face ID, payment and celebration, a vibration on phones that support it, and a Sound on/off switch.
 - **Fast giving.** Instant grant, saved filters with grant-all, and Gupt Daan (give in secret).
 - **Safety built in.** KYC, bill confirmation with the biller, PEP and sanctions screening with fuzzy name matching, sanctioned-region blocks, gift-tax alerts, and a report button.
 - **Global.** 67 countries. Detailed tax rules for India, the US, the UK and the eurozone; general guidance and a US$2,000 cap per payment elsewhere.

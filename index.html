@@ -290,7 +290,36 @@ form.upload h2,.vh{margin:0;font-family:var(--display);font-weight:800;font-size
 .facts{font-size:.82rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px;display:flex;flex-direction:column;gap:4px;text-align:left}
 .facts b{color:var(--ink)}
 .footer-note{font-size:.74rem;color:var(--muted);text-align:center;margin:0}
-@media (prefers-reduced-motion: reduce){.bill,.act{transition:none}.faceid .scan{animation:none}}
+.tools{display:flex;gap:8px;align-items:center}
+.demo-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;padding:11px 16px;font-weight:800;font-size:.9rem;color:#fff;
+  background:linear-gradient(135deg,#5B21B6,#A21CAF 60%,#F59E0B);box-shadow:0 12px 26px -14px rgba(162,28,175,.8)}
+.demo-btn svg{width:18px;height:18px;flex:none}
+.sound-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:10px 12px;font-weight:700;font-size:.8rem;color:var(--muted);white-space:nowrap}
+.sound-btn svg{width:18px;height:18px;flex:none}
+.sound-btn .off{display:none}
+.sound-btn[aria-pressed="false"] .off{display:inline}
+.sound-btn[aria-pressed="false"] .waves{display:none}
+
+/* Watch demo */
+.demo-cap{position:fixed;left:50%;top:max(12px, env(safe-area-inset-top, 0px));transform:translateX(-50%);z-index:40;width:min(440px, calc(100% - 32px));
+  background:#1A1326;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:12px 14px;display:flex;gap:12px;align-items:center;
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.6);transition:top .35s}
+.demo-cap.low{top:calc(max(12px, env(safe-area-inset-top, 0px)) + 136px)}
+.demo-cap .stepn{font-family:var(--mono);font-size:.7rem;opacity:.7;flex:none}
+.demo-cap p{margin:0;flex:1;font-size:.86rem;font-weight:600;line-height:1.35}
+.demo-cap button{flex:none;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:999px;padding:6px 10px;font-size:.76rem;font-weight:700}
+.push{position:fixed;left:50%;top:max(12px, env(safe-area-inset-top, 0px));z-index:45;width:min(400px, calc(100% - 32px));transform:translate(-50%,-160%);
+  transition:transform .45s cubic-bezier(.2,.9,.3,1.15);background:var(--card);border:1px solid var(--line);border-radius:22px;padding:12px 14px;
+  display:grid;grid-template-columns:auto 1fr;gap:2px 12px;align-items:center;box-shadow:var(--shadow)}
+.push.in{transform:translate(-50%,0)}
+.push svg{width:40px;height:40px;grid-row:span 2;border-radius:11px}
+.push .ph{display:flex;justify-content:space-between;font-size:.68rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.push p{margin:0;font-size:.84rem;line-height:1.35}
+.de-actions{display:flex;gap:10px;justify-content:center}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:35;overflow:hidden}
+.confetti i{position:absolute;top:-16px;width:8px;height:14px;border-radius:2px;animation:fall var(--d) cubic-bezier(.25,.6,.4,1) forwards}
+@keyframes fall{to{transform:translate(var(--x), 108vh) rotate(var(--r))}}
+@media (prefers-reduced-motion: reduce){.bill,.act{transition:none}.faceid .scan{animation:none}.push,.demo-cap{transition:none}}
 </style>
 </head>
 <body>
@@ -311,6 +340,12 @@ form.upload h2,.vh{margin:0;font-family:var(--display);font-weight:800;font-size
       <button id="mode-bills" type="button">My bills</button>
       <button id="mode-rich" type="button">Patron</button>
       <button id="mode-compliance" type="button">Compliance</button>
+    </div>
+    <div class="tools">
+      <button class="demo-btn" id="demo-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>Watch someone pay</button>
+      <button class="sound-btn" id="sound-btn" type="button" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" fill="currentColor"/><path class="waves" d="M15.5 9a4 4 0 0 1 0 6M18.2 6.5a7.6 7.6 0 0 1 0 11"/><path class="off" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+        <span id="sound-label">Sound on</span></button>
     </div>
   </header>
 
@@ -462,6 +497,33 @@ form.upload h2,.vh{margin:0;font-family:var(--display);font-weight:800;font-size
     <p id="m-line"></p>
     <div class="facts" id="m-facts"></div>
     <button class="primary" type="button" id="m-close">Back to the deck</button>
+  </div>
+</div>
+
+<div class="demo-cap" id="demo-cap" role="status" aria-live="polite" hidden><span class="stepn" id="demo-n"></span><p id="demo-text"></p><button type="button" id="demo-stop">Stop</button></div>
+
+<div class="push" id="push" hidden>
+  <svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs><linearGradient id="boon-g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B21B6"/><stop offset=".55" stop-color="#A21CAF"/><stop offset="1" stop-color="#F59E0B"/></linearGradient></defs>
+    <rect width="48" height="48" rx="14" fill="url(#boon-g2)"/>
+    <path d="M16.5 10v24" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="24.5" cy="27" r="7.5" fill="none" stroke="#fff" stroke-width="5"/>
+    <path d="M35 6.5l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z" fill="#fff"/>
+  </svg>
+  <div class="ph"><span>Boon</span><span>now</span></div>
+  <p><b id="push-title"></b><br><span id="push-body"></span></p>
+</div>
+
+<div class="overlay" id="demo-end" hidden>
+  <div class="match" role="dialog" aria-modal="true" aria-labelledby="de-title">
+    <h2 id="de-title">That's a boon.</h2>
+    <p>Swipe, Face ID, paid. About five seconds, and the money went straight to the biller.</p>
+    <div class="facts">
+      <span><b>Patron:</b> one gesture, a receipt, and the choice to give in secret.</span>
+      <span><b>Bill owner:</b> the bill is cleared, and a thank-you is one tap away.</span>
+      <span>The demo ran on a fresh copy of the examples. Your own bills and grants are untouched.</span>
+    </div>
+    <div class="de-actions"><button class="ghost" type="button" id="demo-replay">Replay</button><button class="primary" type="button" id="demo-try">Try it yourself</button></div>
   </div>
 </div>
 
@@ -752,7 +814,7 @@ function load(){
   return { mode: ['bills','compliance'].includes(s.mode) ? s.mode : 'rich', persona: PATRONS.some(r=>r.id===s.persona) ? s.persona : PATRONS[0].id,
     filter: FILTERS.some(f=>f.id===s.filter) ? s.filter : 'all', prefs: cleanPrefs(s.prefs), bills };
 }
-function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); return true; } catch(e){ return false; } }
+function save(){ if (demo) return true; try { localStorage.setItem(KEY, JSON.stringify(state)); return true; } catch(e){ return false; } }
 
 const FILTERS = [
   {id:'all', label:'All', test:()=>true},
@@ -764,6 +826,7 @@ const FILTERS = [
   {id:'MED', label:'Medical', test:b=>b.cat==='MED'},
   {id:'UTIL', label:'Utilities', test:b=>b.cat==='UTIL'},
 ];
+let demo = null; // set while the Watch demo plays on its own copy of the examples
 let state = load() || seed();
 
 const $ = id => document.getElementById(id);
@@ -771,6 +834,69 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const persona = () => PATRONS.find(r=>r.id===state.persona) || PATRONS[0];
 const benById = id => PATRONS.find(r=>r.id===id);
 let busy = false;
+
+/* ---------- Sound ---------- */
+// Every sound is synthesized with Web Audio, so there are no files to load. Browsers only play sound after a tap, and each sound here follows one.
+const sfx = (() => {
+  let ctx = null, on = true;
+  try { on = localStorage.getItem('boon-sound') !== 'off'; } catch(e){}
+  const ac = () => {
+    if (!ctx){ const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ctx = new A(); }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  };
+  const tone = (f, at, dur, type, gain) => {
+    const c = ac(); if (!c) return;
+    const t = c.currentTime + at, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + .015); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + .05);
+  };
+  // A burst of filtered noise sweeping from one pitch to another: the card flying off.
+  const whoosh = (dur, from, to, gain) => {
+    const c = ac(); if (!c) return;
+    const t = c.currentTime, n = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain();
+    src.buffer = buf; bp.type = 'bandpass'; bp.Q.value = 1.2;
+    bp.frequency.setValueAtTime(from, t); bp.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + dur * .3); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    src.connect(bp).connect(g).connect(c.destination); src.start(t);
+  };
+  const fx = {
+    grant: () => whoosh(.4, 500, 3600, .35),
+    pass: () => whoosh(.3, 1800, 300, .25),
+    save: () => { tone(1046.5, 0, .2, 'sine', .1); tone(1568, .08, .3, 'sine', .08); },
+    scan: () => [0, .3, .6, .9].forEach(t=>tone(1200, t, .05, 'triangle', .05)),
+    paid: () => { tone(1318.5, 0, .4, 'sine', .16); tone(1975.5, .12, .7, 'sine', .13); },
+    celebrate: () => { [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i)=>tone(f, i * .07, .55, 'triangle', .08)); tone(2093, .4, 1, 'sine', .05); },
+    notify: () => { tone(987.8, 0, .18, 'sine', .12); tone(1318.5, .14, .45, 'sine', .12); },
+  };
+  return {
+    get on(){ return on; },
+    play(k){ if (!on) return; try { fx[k](); } catch(e){} },
+    set(v){ on = v; try { localStorage.setItem('boon-sound', v ? 'on' : 'off'); } catch(e){} if (v) ac(); },
+    // Safari only lets audio start inside a tap, so the first tap opens the audio channel with a silent tone.
+    unlock(){ if (on && !ctx) tone(440, 0, .02, 'sine', .0002); },
+  };
+})();
+document.addEventListener('pointerdown', ()=>sfx.unlock(), {once:true});
+const buzz = pattern => { try { if (navigator.userActivation?.hasBeenActive !== false) navigator.vibrate?.(pattern); } catch(e){} }; // phones that support it feel the grant
+const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function confetti(){
+  if (reducedMotion()) return;
+  const box = document.createElement('div'), colors = ['#7C3AED', '#C026D3', '#F59E0B', '#22C55E', '#38BDF8'];
+  box.className = 'confetti'; box.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 70; i++){
+    const p = document.createElement('i');
+    p.style.left = Math.random() * 100 + '%'; p.style.background = colors[i % colors.length];
+    p.style.setProperty('--x', (Math.random() * 160 - 80) + 'px'); p.style.setProperty('--r', (Math.random() * 720 - 360) + 'deg');
+    p.style.setProperty('--d', (1.4 + Math.random() * 1.2) + 's'); p.style.animationDelay = Math.random() * .25 + 's';
+    box.appendChild(p);
+  }
+  document.body.appendChild(box);
+  setTimeout(()=>box.remove(), 3200);
+}
 
 /* ---------- Totals the rules depend on ---------- */
 const paidBills = () => state.bills.filter(b=>b.status==='paid' && b.payment);
@@ -953,7 +1079,7 @@ const prefFor = p => { const pr = state.prefs[p.id]; return pr && pr.until > Dat
 function expressOk(b, p){ if (!prefFor(p)) return false; const q = quote(b, p, false); return !q.blocked && !q.alerts.length; }
 
 // While any dialog is open, the page behind it can't be tabbed into or clicked.
-function syncInert(){ document.querySelector('.app').inert = ['sheet-overlay','fid-overlay','match-overlay'].some(id=>!$(id).hidden); }
+function syncInert(){ document.querySelector('.app').inert = !!demo || ['sheet-overlay','fid-overlay','match-overlay','demo-end'].some(id=>!$(id).hidden); }
 
 let toastTimer = null, lastUndo = null;
 const snap = b => ({id:b.id, passedBy:[...b.passedBy], savedBy:[...b.savedBy]});
@@ -1108,6 +1234,7 @@ function attachDrag(el){
 function flyOff(dir){
   const el = $('deck').querySelector('.bill.top'); if (!el) return;
   el.querySelector('.stamp.' + dir).style.opacity = 1;
+  sfx.play({pay:'grant', nope:'pass', save:'save'}[dir]);
   el.style.transform = dir==='save' ? 'translate(0,-130%)' : `translate(${dir==='pay'?140:-140}%, -40px) rotate(${dir==='pay'?24:-24}deg)`;
   el.style.opacity = 0;
 }
@@ -1245,8 +1372,8 @@ function faceIdPay(bills, ben, o){
   $('fid-amt').textContent = money(total, ben.region);
   $('fid-text').textContent = bills.length > 1 ? `Granting ${bills.length} boons…` : `Granting to ${bills[0].payee}…`;
   $('fid-sub').textContent = o.express ? 'With your saved declarations' : '';
-  ov.hidden = false; syncInert();
-  setTimeout(()=>{ box.classList.add('done'); $('fid-text').textContent = `Granted by ${ben.name.split(' ')[0]}`; }, 1300);
+  ov.hidden = false; syncInert(); sfx.play('scan');
+  setTimeout(()=>{ box.classList.add('done'); $('fid-text').textContent = `Granted by ${ben.name.split(' ')[0]}`; sfx.play('paid'); buzz([18, 60, 28]); }, 1300);
   setTimeout(()=>{
     ov.hidden = true; syncInert(); if (o.fly) flyOff('pay');
     setTimeout(()=>{ busy = false; payBills(bills, ben, o); }, o.fly ? 320 : 0);
@@ -1297,6 +1424,7 @@ function showMatch(paid, ben, tierBefore, skipped){
     ${one ? `<span>Documents: ${esc(b.payment.docs.join(', '))}</span>` : ''}
     ${skipped ? `<span>${skipped} saved bill${skipped===1?'':'s'} needed a full review and stayed in Saved.</span>` : ''}`;
   $('match-overlay').hidden = false; syncInert(); $('m-close').focus();
+  sfx.play('celebrate'); confetti();
 }
 function closeMatch(){ $('match-overlay').hidden = true; syncInert(); $('btn-grant').focus(); }
 $('m-close').onclick = closeMatch;
@@ -1304,6 +1432,7 @@ $('btn-nope').onclick = pass;
 $('btn-grant').onclick = grant;
 $('btn-save').onclick = saveTop;
 document.addEventListener('keydown', e=>{
+  if (demo){ if (e.key==='Escape') endDemo(); return; }
   if (!$('match-overlay').hidden){ if (e.key==='Escape') closeMatch(); return; }
   if (!$('sheet-overlay').hidden){ if (e.key==='Escape') closeSheet(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
@@ -1632,6 +1761,59 @@ function retryBill(id){
   showErr(''); showNote(`Fix the details below, tick the consent box again, and resubmit. The biller said: ${b.failNote}`);
   $('form').scrollIntoView({behavior:'smooth', block:'start'}); $('f-account').focus({preventScroll:true});
 }
+
+/* ---------- Watch demo ---------- */
+// Plays one payment start to finish on a fresh copy of the examples, then puts the viewer's own data back.
+const demoCap = (n, text, low) => { $('demo-n').textContent = n + '/5'; $('demo-text').textContent = text; $('demo-cap').classList.toggle('low', !!low); };
+function startDemo(){
+  if (demo || busy) return;
+  sfx.unlock(); closeSheet(); $('match-overlay').hidden = true; $('demo-end').hidden = true; hideToast();
+  demo = {saved:state, timers:[]};
+  state = seed();
+  setMode('rich'); syncInert();
+  const p = persona(), b = deckBills()[0];
+  const at = (ms, fn) => demo.timers.push(setTimeout(fn, ms));
+  $('demo-cap').hidden = false;
+  $('deck').scrollIntoView({behavior:reducedMotion() ? 'auto' : 'smooth', block:'center'});
+  demoCap(1, `Meet ${firstName(b)}. ID checked, bill confirmed with ${b.payee}, and the all-in price right on the card.`);
+  at(3600, ()=>{ demoCap(2, 'Swipe right to grant.'); demoDrag(); });
+  at(4800, ()=>{ demoCap(3, `Face ID confirms it's really ${p.name.split(' ')[0]}.`); faceIdPay([b], p, {related:false, gupt:true, fly:true, express:false}); });
+  at(7300, ()=>demoCap(4, `Paid straight to ${b.payee}. The patron gets a receipt, and no cash changes hands.`));
+  at(10800, ()=>{ $('match-overlay').hidden = true; syncInert(); demoCap(5, `Meanwhile, on ${firstName(b)}'s phone…`, true); showPush(b); });
+  at(15000, ()=>{ hidePush(); $('demo-cap').hidden = true; $('demo-end').hidden = false; syncInert(); $('demo-replay').focus(); });
+}
+function demoDrag(){
+  const el = $('deck').querySelector('.bill.top'); if (!el) return;
+  el.style.transition = 'transform .8s cubic-bezier(.3,.7,.3,1)';
+  el.style.transform = 'translate(70px, 6px) rotate(5deg)';
+  el.querySelector('.stamp.pay').style.opacity = .85;
+}
+function showPush(b){
+  $('push-title').textContent = `Your ${b.payee} bill is paid`;
+  $('push-body').textContent = `A secret patron granted ${money(b.amount, b.region)}, paid straight to the biller. Tap to say thank you.`;
+  const el = $('push'); el.hidden = false;
+  void el.offsetWidth; // lay it out off-screen first, so adding the class slides it in
+  el.classList.add('in');
+  sfx.play('notify'); buzz([12, 40, 12]);
+}
+function hidePush(){ $('push').classList.remove('in'); setTimeout(()=>{ if (!$('push').classList.contains('in')) $('push').hidden = true; }, 450); }
+function endDemo(then){
+  if (!demo) return;
+  demo.timers.forEach(clearTimeout); demo.timers = [];
+  if (busy){ setTimeout(()=>endDemo(then), 250); return; } // let a Face ID scan that's under way finish first
+  state = demo.saved; demo = null; sheet = null;
+  ['sheet-overlay', 'fid-overlay', 'match-overlay', 'demo-end', 'demo-cap'].forEach(id=>$(id).hidden = true);
+  $('push').classList.remove('in'); $('push').hidden = true;
+  syncInert(); setMode(state.mode);
+  if (then) then();
+}
+$('demo-btn').onclick = startDemo;
+$('demo-stop').onclick = () => endDemo();
+$('demo-replay').onclick = () => endDemo(startDemo);
+$('demo-try').onclick = () => endDemo(()=>{ setMode('rich'); $('deck').scrollIntoView({behavior:'smooth', block:'center'}); });
+function syncSound(){ $('sound-btn').setAttribute('aria-pressed', sfx.on); $('sound-label').textContent = sfx.on ? 'Sound on' : 'Sound off'; }
+$('sound-btn').onclick = () => { sfx.set(!sfx.on); syncSound(); sfx.play('notify'); };
+syncSound();
 
 syncRegion();
 state.bills.filter(b=>b.status==='checking').forEach(verifyBill);
