@@ -4,7 +4,7 @@
 
 **Swipe right to pay a real bill for someone, straight to the biller.**
 
-Live demo: https://boonapp.github.io/
+Live demo: https://boonapp.github.io/ (mirror on Render: https://boonapp.onrender.com/)
 
 Boon is a product prototype. People upload a real bill (electricity, school fees, rent, medical), and patrons swipe through them like a dating app. Swipe right and Face ID pays the biller directly. The person never receives cash, so the money can only go where they said it would.
 
