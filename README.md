@@ -31,6 +31,12 @@ Keyboard: `←` pass, `→` grant, `↑` save, `I` open the profile.
 - **Safety built in.** KYC, bill confirmation with the biller, PEP and sanctions screening with fuzzy name matching, sanctioned-region blocks, gift-tax alerts, and a report button.
 - **Global.** 67 countries. Detailed tax rules for India, the US, the UK and the eurozone; general guidance and a US$2,000 cap per payment elsewhere.
 
+## Deploy your own copy
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/boonapp/boonapp.github.io)
+
+`render.yaml` sets Boon up as a free Render static site with strict security headers (no outside connections, no framing). GitHub Pages hosting comes from the same repo.
+
 ## Run it
 
 It is one HTML file with no build step.

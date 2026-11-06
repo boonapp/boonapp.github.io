@@ -1,0 +1,21 @@
+# Render Blueprint: hosts Boon as a free static site on Render's CDN.
+# Boon is one HTML file, so there is nothing to build.
+services:
+  - type: web
+    runtime: static
+    name: boonapp
+    buildCommand: echo "No build step, Boon is one HTML file"
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: "camera=(), microphone=(), geolocation=()"
